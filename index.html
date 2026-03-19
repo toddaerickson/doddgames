@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>DoddGames — Cognitive Assessment Platform</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     OVERALL STRUCTURE
+     ─────────────────────────────────────────────────────────────
+     Single-page app: one #landing div + 11 .game-screen divs +
+     one #profile-screen + two overlays (countdown, session-complete).
+     Only one section is visible at a time; app.js toggles the
+     CSS class "active" on .game-screen elements to show/hide them
+     (see game-screen activation pattern below).
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ LANDING ═══════════ -->
+<!-- Root page: header controls, 4 domain sections, analytics row, and score history. -->
+<div id="landing">
+    <!-- Header: app title, sound toggle, settings gear, and profile shortcut. -->
+    <div class="landing-header">
+        <h1>DoddGames</h1>
+        <!-- User switcher: shows active user avatar + name; dropdown for switching/creating users -->
+        <div class="user-switcher">
+            <button class="user-switcher-btn" id="user-switcher-btn" title="Switch User">
+                <span class="user-avatar"></span>
+                <span class="user-switcher-name">Guest</span>
+                <span class="user-chevron">&#9662;</span>
+            </button>
+            <div class="user-dropdown" id="user-dropdown">
+                <div class="user-dropdown-list" id="user-dropdown-list"></div>
+                <div class="user-dropdown-actions">
+                    <button class="user-dropdown-action" id="user-add-btn">+ New User</button>
+                    <button class="user-dropdown-action" id="user-guest-btn">Guest Mode</button>
+                </div>
+            </div>
+        </div>
+        <button class="sound-toggle" id="sound-toggle" title="Toggle Sound">&#128264;</button>
+        <button class="settings-toggle" id="settings-toggle" title="Settings">&#9881;</button>
+        <button class="profile-btn" id="profile-btn" title="Cognitive Profile">&#128202; Profile</button>
+    </div>
+    <p class="subtitle">Cognitive assessment &amp; training across 4 neuropsychological domains</p>
+
+    <!-- Settings Panel: shown/hidden by the gear button; currently only age-bracket normalization. -->
+    <div class="settings-panel" id="settings-panel">
+        <span class="settings-user-label" id="settings-user-label">Settings (Guest)</span>
+        <label>Age Bracket:
+            <select id="age-bracket">
+                <option value="">-- Select --</option>
+                <option value="under-20">Under 20</option>
+                <option value="20-29">20–29</option>
+                <option value="30-39">30–39</option>
+                <option value="40-49">40–49</option>
+                <option value="50-59">50–59</option>
+                <option value="60-69">60–69</option>
+                <option value="70+">70+</option>
+            </select>
+        </label>
+    </div>
+
+    <!-- Streak badge: hidden until the user has played on consecutive calendar days. -->
+    <div class="streak-badge" id="streak-badge">
+        &#128293; <span class="streak-num" id="streak-num">0</span> day streak
+    </div>
+
+    <!-- ── DOMAIN 1: Processing Speed ── -->
+    <!-- Three games measuring raw visual-motor quickness (Schulte, Trails-A, Symbol-Digit). -->
+    <div class="domain-section">
+        <div class="domain-header">
+            <h2>Processing Speed</h2>
+            <span class="domain-desc">How quickly you process and respond to information</span>
+        </div>
+        <div class="domain-cards">
+            <!-- Each .card calls app.startGame('<id>') on click; the id matches the game-screen id prefix. -->
+            <div class="card" onclick="app.startGame('schulte')">
+                <div class="icon">&#128065;</div>
+                <h2>Schulte Table</h2>
+                <p>Fix your eyes on the center and use peripheral vision to find numbers in order.</p>
+                <div class="duration">5 minutes &middot; Peripheral Vision</div>
+                <!-- .card-best: populated by app.js with the personal best and a sparkline of recent scores. -->
+                <div class="card-best" id="card-best-schulte">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('trails-a')">
+                <div class="icon">&#128279;</div>
+                <h2>Trail Making A</h2>
+                <p>Connect numbered circles in order as fast as possible. Measures visual scanning and motor speed.</p>
+                <div class="duration">5 minutes &middot; Visual-Motor Speed</div>
+                <div class="card-best" id="card-best-trails-a">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('symbol-digit')">
+                <div class="icon">&#128290;</div>
+                <h2>Symbol Digit</h2>
+                <p>Match symbols to digits using a reference key. 90-second rounds test rapid information processing.</p>
+                <div class="duration">5 minutes &middot; Symbol-Digit Coding</div>
+                <div class="card-best" id="card-best-symbol-digit">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DOMAIN 2: Executive Function ── -->
+    <!-- Four games targeting planning, set-shifting, and spatial-motor control. -->
+    <div class="domain-section">
+        <div class="domain-header">
+            <h2>Executive Function</h2>
+            <span class="domain-desc">Planning, set-shifting, and spatial reasoning under pressure</span>
+        </div>
+        <div class="domain-cards">
+            <div class="card" onclick="app.startGame('tetris')">
+                <div class="icon">&#129513;</div>
+                <h2>Fast-Paced Tetris</h2>
+                <p>Play at a speed faster than comfortable. Focus on immediate placement to train spatial-motor planning.</p>
+                <div class="duration">5 minutes &middot; Spatial-Motor Planning</div>
+                <div class="card-best" id="card-best-tetris">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('trails-b')">
+                <div class="icon">&#128279;</div>
+                <h2>Trail Making B</h2>
+                <p>Alternate numbers and letters (1→A→2→B→...). Measures set-shifting and executive control.</p>
+                <div class="duration">5 minutes &middot; Set-Shifting</div>
+                <div class="card-best" id="card-best-trails-b">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('card-sort')">
+                <div class="icon">&#127183;</div>
+                <h2>Card Sort (WCST)</h2>
+                <p>Sort cards by a hidden rule that shifts without warning. Detects perseverative errors.</p>
+                <div class="duration">5 minutes &middot; Cognitive Flexibility</div>
+                <div class="card-best" id="card-best-card-sort">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('tower')">
+                <div class="icon">&#127960;</div>
+                <h2>Tower of London</h2>
+                <p>Move discs to match a goal in minimum moves. Measures planning depth and impulsivity.</p>
+                <div class="duration">5 minutes &middot; Planning</div>
+                <div class="card-best" id="card-best-tower">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DOMAIN 3: Inhibitory Control ── -->
+    <!-- Three games measuring the ability to suppress prepotent or automatic responses. -->
+    <div class="domain-section">
+        <div class="domain-header">
+            <h2>Inhibitory Control</h2>
+            <span class="domain-desc">Ability to suppress automatic responses and resist interference</span>
+        </div>
+        <div class="domain-cards">
+            <div class="card" onclick="app.startGame('stroop')">
+                <div class="icon">&#127912;</div>
+                <h2>Stroop Challenge</h2>
+                <p>Name the <em>ink color</em>, not the word. Measures interference control in the frontal lobe.</p>
+                <div class="duration">5 minutes &middot; Interference Control</div>
+                <div class="card-best" id="card-best-stroop">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('gonogo')">
+                <div class="icon">&#128994;</div>
+                <h2>Go / No-Go</h2>
+                <p>Respond to green circles, withhold for red. Quantifies disinhibition and reaction time variability.</p>
+                <div class="duration">5 minutes &middot; Response Inhibition</div>
+                <div class="card-best" id="card-best-gonogo">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+            <div class="card" onclick="app.startGame('cpt')">
+                <div class="icon">&#128172;</div>
+                <h2>Continuous Performance (AX-CPT)</h2>
+                <p>Sustained attention with context-dependent inhibition. Measures proactive control.</p>
+                <div class="duration">5 minutes &middot; Sustained Attention</div>
+                <div class="card-best" id="card-best-cpt">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DOMAIN 4: Memory ── -->
+    <!-- One game covering verbal encoding, consolidation, and delayed recall (RAVLT-style). -->
+    <div class="domain-section">
+        <div class="domain-header">
+            <h2>Memory</h2>
+            <span class="domain-desc">Encoding vs. retrieval — the critical diagnostic dissociation</span>
+        </div>
+        <div class="domain-cards">
+            <div class="card" onclick="app.startGame('word-list')">
+                <div class="icon">&#128218;</div>
+                <h2>Word List Learning</h2>
+                <p>Learn 15 words across 3 trials, then recall after delay. Tests encoding, consolidation, and retrieval.</p>
+                <div class="duration">5 minutes &middot; Verbal Memory</div>
+                <div class="card-best" id="card-best-word-list">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Row: per-domain composite scores injected by app.js after at least one session. -->
+    <div class="analytics-row" id="analytics-row"></div>
+
+    <!-- Score History: scrollable log of every completed session with export/import/clear controls. -->
+    <div class="history-section" id="history-section">
+        <div class="history-header">
+            <h3>Score History</h3>
+            <div class="history-actions">
+                <button class="action-btn" onclick="app.scores.exportData(app.users.getActiveUser()?.name || '')">Export</button>
+                <button class="action-btn" id="export-all-btn">Export All Users</button>
+                <button class="action-btn" onclick="document.getElementById('import-file').click()">Import</button>
+                <button class="action-btn danger" onclick="app.scores.clearHistory()">Clear All</button>
+            </div>
+        </div>
+        <div id="history-list" class="history-list"></div>
+    </div>
+    <!-- Hidden file input; triggered by the Import button above to load a JSON score archive. -->
+    <input type="file" id="import-file" accept=".json" onchange="app.scores.importData(event)">
+</div>
+
+<!-- ═══════════ COUNTDOWN OVERLAY ═══════════ -->
+<!-- Shown for 3 seconds before any game starts; rendered on top of all screens via z-index. -->
+<div class="countdown-overlay" id="countdown-overlay">
+    <div class="countdown-num" id="countdown-num">3</div>
+    <div class="countdown-label" id="countdown-label">Get ready...</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     GAME SCREENS  (activation pattern)
+     ────────────────────────────────────────────────────────────
+     Every game lives in a <div class="game-screen"> that is
+     hidden by default (display:none in CSS).  app.startGame()
+     adds the class "active" to the target screen and removes it
+     from all others, making exactly one screen visible at a time.
+     Each screen follows the same top-bar / stats-row / play-area
+     layout so game modules can be developed independently.
+     ══════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════ SCHULTE TABLE ═══════════ -->
+<!-- Processing Speed — peripheral vision grid; size toggled between 3×3, 5×5, and 7×7. -->
+<div id="schulte-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Schulte Table</h2>
+        <div class="timer-display" id="schulte-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-schulte" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Table</div><div class="value" id="schulte-table-num" role="status" aria-live="polite">1 / 5</div></div>
+        <div class="stat"><div class="label">Best Time</div><div class="value" id="schulte-best" role="status" aria-live="polite">--</div></div>
+        <div class="stat"><div class="label">Errors</div><div class="value" id="schulte-errors" role="status" aria-live="polite">0</div></div>
+    </div>
+    <div class="difficulty-selector" id="schulte-difficulty">
+        <button class="diff-btn" data-size="3" onclick="app.schulte.setSize(3)">3&times;3</button>
+        <button class="diff-btn active" data-size="5" onclick="app.schulte.setSize(5)">5&times;5</button>
+        <button class="diff-btn" data-size="7" onclick="app.schulte.setSize(7)">7&times;7</button>
+    </div>
+    <p class="schulte-instruction">Keep eyes on center &mdash; use peripheral vision</p>
+    <div class="schulte-next-num">Find: <span id="schulte-next">1</span></div>
+    <div class="schulte-board grid-5" id="schulte-board"></div>
+</div>
+
+<!-- ═══════════ TETRIS ═══════════ -->
+<!-- Executive Function — spatial-motor planning; canvas-rendered with separate next-piece preview. -->
+<div id="tetris-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Fast-Paced Tetris</h2>
+        <div class="timer-display" id="tetris-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-tetris" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="tetris-wrapper">
+        <canvas id="tetris-canvas" width="250" height="500"></canvas>
+        <div class="tetris-side">
+            <div>
+                <div class="label">Next</div>
+                <canvas id="tetris-next-canvas" width="100" height="100"></canvas>
+            </div>
+            <div>
+                <div class="label">Score</div>
+                <div class="value" id="tetris-score">0</div>
+            </div>
+            <div>
+                <div class="label">Lines</div>
+                <div class="value" id="tetris-lines">0</div>
+            </div>
+            <div>
+                <div class="label">Level</div>
+                <div class="value" id="tetris-level">1</div>
+            </div>
+            <div>
+                <div class="label">Game Overs</div>
+                <div class="value" id="tetris-gameovers">0</div>
+            </div>
+        </div>
+    </div>
+    <!-- Keyboard hint for desktop; touch-controls below are shown on mobile. -->
+    <div class="tetris-controls-hint">
+        &#8592; &#8594; Move &nbsp;|&nbsp; &#8593; Rotate &nbsp;|&nbsp; &#8595; Hard Drop &nbsp;|&nbsp; Space Pause
+    </div>
+    <div class="touch-controls" id="tetris-touch">
+        <button class="touch-btn" data-action="left">&#8592;</button>
+        <button class="touch-btn" data-action="rotate">&#8635;</button>
+        <button class="touch-btn" data-action="right">&#8594;</button>
+        <button class="touch-btn" data-action="drop">&#8595;</button>
+        <button class="touch-btn wide" data-action="pause">PAUSE</button>
+    </div>
+</div>
+
+<!-- ═══════════ STROOP ═══════════ -->
+<!-- Inhibitory Control — ink-color naming; colorblind-friendly palette available via CB toggle. -->
+<div id="stroop-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Stroop Challenge</h2>
+        <div class="timer-display" id="stroop-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-stroop" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Correct</div><div class="value" id="stroop-correct" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Wrong</div><div class="value" id="stroop-wrong" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Streak</div><div class="value" id="stroop-streak" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Accuracy</div><div class="value" id="stroop-accuracy" role="status" aria-live="polite">--%</div></div>
+    </div>
+    <div class="difficulty-selector" id="stroop-difficulty">
+        <button class="diff-btn" data-level="1" onclick="app.stroop.setDifficulty(1)">Easy</button>
+        <button class="diff-btn active" data-level="2" onclick="app.stroop.setDifficulty(2)">Medium</button>
+        <button class="diff-btn" data-level="3" onclick="app.stroop.setDifficulty(3)">Hard</button>
+        <button class="cb-toggle" id="cb-toggle" title="Colorblind-friendly colors" onclick="app.stroop.toggleColorblind()">&#128065; CB</button>
+    </div>
+    <p class="schulte-instruction">Name the <strong>INK COLOR</strong>, not the word! <span class="stroop-difficulty-label" id="stroop-diff-label"></span></p>
+    <!-- #stroop-word displays the stimulus; #stroop-buttons is populated dynamically with color choices. -->
+    <div class="stroop-word" id="stroop-word"></div>
+    <div class="stroop-buttons" id="stroop-buttons"></div>
+    <div class="stroop-feedback" id="stroop-feedback" role="status" aria-live="assertive"></div>
+</div>
+
+<!-- ═══════════ TRAIL MAKING A ═══════════ -->
+<!-- Processing Speed — numbers-only canvas trail; measures visual-scanning and motor speed. -->
+<div id="trails-a-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Trail Making A</h2>
+        <div class="timer-display" id="trails-a-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-trails-a" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Trail</div><div class="value" id="trails-a-num" role="status" aria-live="polite">1</div></div>
+        <div class="stat"><div class="label">Best Time</div><div class="value" id="trails-a-best" role="status" aria-live="polite">--</div></div>
+        <div class="stat"><div class="label">Errors</div><div class="value" id="trails-a-errors" role="status" aria-live="polite">0</div></div>
+    </div>
+    <p class="schulte-instruction">Connect numbers in order: 1 &rarr; 2 &rarr; 3 &rarr; ... &rarr; 25</p>
+    <div class="trails-canvas-wrap">
+        <canvas id="trails-a-canvas" width="700" height="500"></canvas>
+    </div>
+</div>
+
+<!-- ═══════════ GO / NO-GO ═══════════ -->
+<!-- Inhibitory Control — respond to green, withhold for red; tracks hits, false alarms, misses, and RT. -->
+<div id="gonogo-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Go / No-Go</h2>
+        <div class="timer-display" id="gonogo-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-gonogo" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Hits</div><div class="value" id="gonogo-hits" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">False Alarms</div><div class="value" id="gonogo-false-alarms" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Misses</div><div class="value" id="gonogo-misses" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Avg RT</div><div class="value" id="gonogo-rt" role="status" aria-live="polite">--</div></div>
+    </div>
+    <p class="schulte-instruction">Press <strong>SPACE</strong> or tap for <span style="color:#2ecc71">GREEN</span> circles. Do NOT respond to <span style="color:#e74c3c">RED</span> circles.</p>
+    <div class="gonogo-area" id="gonogo-area">
+        <div class="gonogo-circle" id="gonogo-circle"></div>
+        <button class="gonogo-tap-btn" id="gonogo-tap-btn">TAP</button>
+    </div>
+</div>
+
+<!-- ═══════════ TRAIL MAKING B ═══════════ -->
+<!-- Executive Function — alternating number/letter canvas trail; adds set-shifting demand over TMT-A. -->
+<div id="trails-b-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Trail Making B</h2>
+        <div class="timer-display" id="trails-b-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-trails-b" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Trail</div><div class="value" id="trails-b-num" role="status" aria-live="polite">1</div></div>
+        <div class="stat"><div class="label">Best Time</div><div class="value" id="trails-b-best" role="status" aria-live="polite">--</div></div>
+        <div class="stat"><div class="label">Errors</div><div class="value" id="trails-b-errors" role="status" aria-live="polite">0</div></div>
+    </div>
+    <p class="schulte-instruction">Alternate numbers and letters: 1 &rarr; A &rarr; 2 &rarr; B &rarr; ... &rarr; 13 &rarr; L &nbsp; Next: <strong id="trails-b-next-target">1</strong></p>
+    <div class="trails-canvas-wrap">
+        <canvas id="trails-b-canvas" width="700" height="500"></canvas>
+    </div>
+</div>
+
+<!-- ═══════════ CARD SORT (WCST) ═══════════ -->
+<!-- Executive Function — Wisconsin Card Sorting Test analog; perseverative-error count is key metric. -->
+<div id="card-sort-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Card Sort (WCST)</h2>
+        <div class="timer-display" id="card-sort-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-card-sort" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Categories</div><div class="value" id="cardsort-categories" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Errors</div><div class="value" id="cardsort-errors" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Perseverative</div><div class="value" id="cardsort-persev" role="status" aria-live="polite">0</div></div>
+    </div>
+    <p class="schulte-instruction">Match the stimulus card to a reference card. The sorting rule is hidden &mdash; learn from feedback!</p>
+    <div class="cardsort-area">
+        <!-- Four static reference cards; the active sorting rule (color/shape/number) shifts silently. -->
+        <div class="cardsort-label">Reference Cards</div>
+        <div class="cardsort-references" id="cardsort-references"></div>
+        <div class="cardsort-label">Match this card &darr;</div>
+        <div id="cardsort-stimulus"></div>
+        <div class="cardsort-feedback" id="cardsort-feedback"></div>
+    </div>
+</div>
+
+<!-- ═══════════ TOWER OF LONDON ═══════════ -->
+<!-- Executive Function — planning depth task; Avg Plan time (ms before first move) quantifies impulsivity. -->
+<div id="tower-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Tower of London</h2>
+        <div class="timer-display" id="tower-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-tower" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Solved</div><div class="value" id="tower-solved" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Moves</div><div class="value" id="tower-moves" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Optimal</div><div class="value" id="tower-optimal" role="status" aria-live="polite">--</div></div>
+        <div class="stat"><div class="label">Avg Plan</div><div class="value" id="tower-planning" role="status" aria-live="polite">--</div></div>
+    </div>
+    <div class="tower-area">
+        <div class="tower-label">Click a peg to select, then click another to move the top disc</div>
+        <!-- Three interactive source pegs; disc elements are injected by app.js at puzzle start. -->
+        <div class="tower-pegs">
+            <div class="tower-peg" id="tower-peg-0">
+                <div class="tower-peg-rod"><div class="tower-discs"></div></div>
+                <div class="tower-peg-base"></div>
+            </div>
+            <div class="tower-peg" id="tower-peg-1">
+                <div class="tower-peg-rod"><div class="tower-discs"></div></div>
+                <div class="tower-peg-base"></div>
+            </div>
+            <div class="tower-peg" id="tower-peg-2">
+                <div class="tower-peg-rod"><div class="tower-discs"></div></div>
+                <div class="tower-peg-base"></div>
+            </div>
+        </div>
+        <!-- Three read-only goal pegs showing the target disc arrangement for the current puzzle. -->
+        <div class="tower-label">Goal</div>
+        <div class="tower-goal-pegs">
+            <div class="tower-goal-peg" id="tower-goal-0">
+                <div class="tower-peg-rod"><div class="tower-discs"></div></div>
+                <div class="tower-peg-base"></div>
+            </div>
+            <div class="tower-goal-peg" id="tower-goal-1">
+                <div class="tower-peg-rod"><div class="tower-discs"></div></div>
+                <div class="tower-peg-base"></div>
+            </div>
+            <div class="tower-goal-peg" id="tower-goal-2">
+                <div class="tower-peg-rod"><div class="tower-discs"></div></div>
+                <div class="tower-peg-base"></div>
+            </div>
+        </div>
+        <div class="tower-feedback" id="tower-feedback"></div>
+    </div>
+</div>
+
+<!-- ═══════════ SYMBOL DIGIT (SDMT) ═══════════ -->
+<!-- Processing Speed — Symbol Digit Modalities Test; 90-second timed rounds, best-round tracked. -->
+<div id="symbol-digit-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Symbol Digit</h2>
+        <div class="timer-display" id="symbol-digit-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-symbol-digit" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Correct</div><div class="value" id="sdmt-correct" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Errors</div><div class="value" id="sdmt-errors" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Round</div><div class="value" id="sdmt-round" role="status" aria-live="polite">1</div></div>
+        <div class="stat"><div class="label">Best Round</div><div class="value" id="sdmt-best" role="status" aria-live="polite">--</div></div>
+    </div>
+    <div class="sdmt-area">
+        <!-- #sdmt-key: the symbol→digit reference legend, regenerated each round. -->
+        <div class="sdmt-key" id="sdmt-key"></div>
+        <div class="sdmt-round-timer">Round: <span id="sdmt-round-timer">90</span>s</div>
+        <!-- #sdmt-stimulus: the current symbol to identify; #sdmt-digits: tap buttons for mobile. -->
+        <div class="sdmt-stimulus" id="sdmt-stimulus"></div>
+        <p class="schulte-instruction">Press the matching digit key (1-9) or tap a button</p>
+        <div class="sdmt-digits" id="sdmt-digits"></div>
+    </div>
+</div>
+
+<!-- ═══════════ WORD LIST LEARNING ═══════════ -->
+<!-- Memory — RAVLT-style; phases cycle Study→Recall (×3 trials) then Delayed Recall→Recognition. -->
+<div id="word-list-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Word List Learning</h2>
+        <div class="timer-display" id="word-list-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-word-list" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Trial</div><div class="value" id="wordlist-trial" role="status" aria-live="polite">1</div></div>
+        <div class="stat"><div class="label">Recalled</div><div class="value" id="wordlist-recalled" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Phase</div><div class="value" id="wordlist-phase" role="status" aria-live="polite">Study</div></div>
+        <div class="stat"><div class="label">Curve</div><div class="value" id="wordlist-learning-curve" role="status" aria-live="polite">--</div></div>
+    </div>
+    <div class="wordlist-area">
+        <!-- #wordlist-display: shows the word list during Study phase; cleared during Recall. -->
+        <div class="wordlist-display" id="wordlist-display"></div>
+        <!-- #wordlist-input-area: free-recall text entry; visible only during Recall phases. -->
+        <div class="wordlist-input-area" id="wordlist-input-area">
+            <input type="text" id="wordlist-input" placeholder="Type a word..." autocomplete="off" autocapitalize="none">
+            <button id="wordlist-submit">Submit</button>
+            <span class="wordlist-recall-timer" id="wordlist-recall-timer">60s</span>
+        </div>
+        <!-- #wordlist-recognition: old/new forced-choice shown only in the final Recognition phase. -->
+        <div class="wordlist-recognition" id="wordlist-recognition">
+            <button class="wordlist-recog-btn" data-response="old">Old (was in list)</button>
+            <button class="wordlist-recog-btn" data-response="new">New (not in list)</button>
+            <span id="wordlist-recog-progress"></span>
+        </div>
+        <div class="wordlist-feedback" id="wordlist-feedback"></div>
+    </div>
+</div>
+
+<!-- ═══════════ CONTINUOUS PERFORMANCE (AX-CPT) ═══════════ -->
+<!-- Inhibitory Control — context-dependent inhibition; BX hits and AX false-alarms are key metrics. -->
+<div id="cpt-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>AX-CPT</h2>
+        <div class="timer-display" id="cpt-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-cpt" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">BX Hits</div><div class="value" id="cpt-hits" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">AX False Alarms</div><div class="value" id="cpt-false-alarms" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">AX Inhibits</div><div class="value" id="cpt-ax-inhibit" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Avg RT</div><div class="value" id="cpt-rt" role="status" aria-live="polite">--</div></div>
+    </div>
+    <p class="schulte-instruction">Press <strong>SPACE</strong> when you see <strong style="color:#00d4ff">X</strong>, but <strong style="color:#e74c3c">NOT</strong> if <strong style="color:#f39c12">A</strong> came before it.</p>
+    <!-- #cpt-instruction-context: shows the cue letter (A or non-A) one step before the probe. -->
+    <div class="cpt-area" id="cpt-area">
+        <div class="cpt-context" id="cpt-instruction-context"></div>
+        <div class="cpt-letter" id="cpt-letter"></div>
+        <button class="gonogo-tap-btn" id="cpt-tap-btn">TAP</button>
+    </div>
+</div>
+
+<!-- ═══════════ COGNITIVE PROFILE ═══════════ -->
+<!-- Aggregated cross-game dashboard: radar chart, domain scores, pattern analysis, and retest trends. -->
+<div id="profile-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Cognitive Profile</h2>
+    </div>
+    <div class="profile-content">
+        <h3 class="profile-user-heading" id="profile-user-name">Guest</h3>
+        <div class="profile-disclaimer">This is an educational tool, not a clinical diagnostic instrument. Results should not be used for self-diagnosis.</div>
+
+        <!-- Radar chart: one axis per domain; scores normalised to 0–100 percentile within age bracket. -->
+        <div class="profile-section">
+            <h3>Domain Overview</h3>
+            <canvas id="profile-radar" width="400" height="400"></canvas>
+            <div id="profile-domains" class="profile-domains"></div>
+        </div>
+
+        <!-- Pattern Analysis: narrative interpretation injected by app.js based on domain score profile. -->
+        <div class="profile-section">
+            <h3>Pattern Analysis</h3>
+            <div id="profile-pattern" class="profile-pattern-box"></div>
+        </div>
+
+        <!-- Retest Trends: per-game sparklines showing score trajectory across all saved sessions. -->
+        <div class="profile-section">
+            <h3>Retest Trends</h3>
+            <div id="profile-retest" class="profile-retest"></div>
+        </div>
+
+        <!-- Game Detail: expandable per-game breakdown with raw stats for the most recent session. -->
+        <div class="profile-section">
+            <h3>Game Detail</h3>
+            <div id="profile-game-detail" class="profile-game-detail"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating pause key hint — visible during game sessions only -->
+<div class="pause-key-hint" id="pause-key-hint" style="display:none">Space to pause</div>
+
+<!-- ═══════════ PAUSE OVERLAY ═══════════ -->
+<!-- Shown when the player pauses during any game session. z-index sits between game and countdown. -->
+<div class="pause-overlay" id="pause-overlay">
+    <div class="pause-box">
+        <div class="pause-icon">&#9208;</div>
+        <h2>Paused</h2>
+        <p class="pause-hint" id="pause-hint">Press Space to resume</p>
+        <button class="btn btn-primary" id="pause-resume-btn">Resume</button>
+        <button class="btn btn-secondary" onclick="app.goHome()">Quit to Menu</button>
+    </div>
+</div>
+
+<!-- ═══════════ USER MODAL ═══════════ -->
+<!-- Create/edit user overlay with name input and color picker. -->
+<div class="overlay" id="user-modal">
+    <div class="overlay-box user-modal-box">
+        <h2 id="user-modal-title">New User</h2>
+        <input type="text" id="user-modal-name" class="user-modal-input" placeholder="Name (max 20 chars)" maxlength="20" autocomplete="off">
+        <div class="user-color-picker">
+            <span class="user-color-option selected" data-color="#7b2ff7" style="background:#7b2ff7"></span>
+            <span class="user-color-option" data-color="#e74c3c" style="background:#e74c3c"></span>
+            <span class="user-color-option" data-color="#3498db" style="background:#3498db"></span>
+            <span class="user-color-option" data-color="#2ecc71" style="background:#2ecc71"></span>
+            <span class="user-color-option" data-color="#f39c12" style="background:#f39c12"></span>
+            <span class="user-color-option" data-color="#e91e63" style="background:#e91e63"></span>
+            <span class="user-color-option" data-color="#00bcd4" style="background:#00bcd4"></span>
+            <span class="user-color-option" data-color="#ff5722" style="background:#ff5722"></span>
+            <span class="user-color-option" data-color="#9c27b0" style="background:#9c27b0"></span>
+            <span class="user-color-option" data-color="#4caf50" style="background:#4caf50"></span>
+        </div>
+        <div class="user-modal-actions">
+            <button class="btn btn-primary" id="user-modal-save">Save</button>
+            <button class="btn btn-secondary" id="user-modal-cancel">Cancel</button>
+            <button class="btn btn-danger" id="user-modal-delete" style="display:none">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ SESSION COMPLETE OVERLAY ═══════════ -->
+<!-- Shown after each game ends; #overlay-summary is filled with score/percentile text by app.js. -->
+<div class="overlay" id="overlay-complete" role="alert" aria-live="assertive">
+    <div class="overlay-box">
+        <h2>Session Complete</h2>
+        <p id="overlay-summary"></p>
+        <button class="btn btn-primary" onclick="app.goHome()">Back to Menu</button>
+        <button class="btn btn-secondary" id="overlay-replay-btn">Play Again</button>
+    </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

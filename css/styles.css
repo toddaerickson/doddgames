@@ -1,0 +1,1623 @@
+/* ══════════════════════════════════════════════════════════
+   DoddGames — Cognitive Assessment Platform
+   Design system: dark theme (#0a0a1a bg, #00d4ff cyan accents,
+   #7b2ff7 purple primary, #2ecc71 correct/green, #e74c3c error/red,
+   #f39c12 amber warnings). All layout uses fixed/overflow:hidden so
+   each game-screen fills the viewport without page-level scrolling.
+   ══════════════════════════════════════════════════════════ */
+
+/* Reset: normalize box model across all elements */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Root surface: fixed-position dark canvas; position:fixed + overflow:hidden
+   prevents elastic scroll on iOS while keeping the body full-screen */
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0a0a1a;
+    color: #e0e0e0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Landing / Nav ─────────────────────────── */
+/* Landing is the only scrollable view; all game screens are display:none until activated */
+/* env(safe-area-inset-*) pads content away from notches/home-bars on iPhone/Android */
+#landing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: max(2rem, env(safe-area-inset-top, 2rem)) max(2rem, env(safe-area-inset-right, 2rem)) max(2rem, env(safe-area-inset-bottom, 2rem)) max(2rem, env(safe-area-inset-left, 2rem));
+}
+
+.landing-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.4rem;
+}
+
+/* Gradient text: clip a cyan→purple gradient to the text shape (webkit prefix still required) */
+#landing h1 {
+    font-size: 2.4rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.sound-toggle {
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #888;
+    font-size: 1.3rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.sound-toggle:hover { border-color: #7b2ff7; color: #e0e0e0; }
+/* Muted state uses red (#e74c3c) so the icon is visually distinct at a glance */
+.sound-toggle.muted { color: #e74c3c; border-color: #e74c3c; }
+
+#landing .subtitle {
+    color: #888;
+    margin-bottom: 0.6rem;
+    font-size: 1.05rem;
+    text-align: center;
+}
+
+/* Streak badge: amber (#f39c12) pill shown on the landing page above the game cards */
+.streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #1a1a35;
+    border: 1px solid #2a2a4a;
+    border-radius: 20px;
+    padding: 0.3rem 1rem;
+    font-size: 0.85rem;
+    color: #f39c12;
+    margin-bottom: 1.5rem;
+}
+
+.streak-badge .streak-num { font-weight: 700; font-size: 1rem; }
+
+/* ── Domain Sections ──────────────────────── */
+/* Groups games by cognitive domain (e.g., Attention, Memory, Executive Function) */
+.domain-section {
+    width: 100%;
+    max-width: 960px;
+    margin-bottom: 1.5rem;
+}
+
+.domain-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #1e1e3a;
+}
+
+.domain-header h2 {
+    font-size: 0.95rem;
+    color: #00d4ff;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+}
+
+.domain-header .domain-desc {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.domain-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+/* ── Settings Panel ──────────────────────── */
+/* Collapsible panel (display:none → display:flex via .open) for session-level options */
+.settings-toggle {
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #888;
+    font-size: 1.1rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.settings-toggle:hover { border-color: #7b2ff7; color: #e0e0e0; }
+
+.settings-panel {
+    max-width: 960px;
+    width: 100%;
+    background: #14142a;
+    border: 1px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: none;
+}
+
+.settings-panel.open { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; }
+
+.settings-panel label {
+    font-size: 0.85rem;
+    color: #999;
+}
+
+.settings-panel select {
+    background: #0a0a1a;
+    color: #e0e0e0;
+    border: 1px solid #2a2a4a;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+
+.profile-btn {
+    background: linear-gradient(135deg, #00d4ff22, #7b2ff722);
+    border: 1px solid #2a2a4a;
+    color: #ccc;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.profile-btn:hover { border-color: #7b2ff7; color: #e0e0e0; }
+
+/* ── Cards ────────────────────────────────── */
+/* Game-select cards on the landing page; lift + purple glow on hover */
+.card {
+    background: #14142a;
+    border: 1px solid #2a2a4a;
+    border-radius: 16px;
+    padding: 2rem;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    border-color: #7b2ff7;
+    box-shadow: 0 8px 30px rgba(123, 47, 247, 0.15);
+}
+
+.card .icon { font-size: 2.4rem; margin-bottom: 1rem; }
+.card h2 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.card p { color: #999; font-size: 0.9rem; line-height: 1.5; }
+.card .duration { color: #7b2ff7; font-weight: 600; margin-top: 0.8rem; font-size: 0.85rem; }
+
+.card-best {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #1e1e3a;
+    font-size: 0.8rem;
+    color: #00d4ff;
+}
+
+.card-best .best-label { color: #666; }
+.card-best .best-value { font-weight: 700; }
+
+.card-sparkline { margin-left: auto; }
+
+/* ── Shared game chrome ────────────────────── */
+/* Screen-swap pattern: every game view is display:none by default; JS adds .active to show one at a time */
+/* Same safe-area-inset padding as #landing so content clears device notches on all screens */
+.game-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: max(1.5rem, env(safe-area-inset-top, 1.5rem)) max(1.5rem, env(safe-area-inset-right, 1.5rem)) max(1.5rem, env(safe-area-inset-bottom, 1.5rem)) max(1.5rem, env(safe-area-inset-left, 1.5rem));
+}
+
+.game-screen.active { display: flex; }
+
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 700px;
+    margin-bottom: 1.2rem;
+}
+
+.top-bar h2 {
+    font-size: 1.3rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.timer-display {
+    font-family: 'Courier New', monospace;
+    font-size: 1.4rem;
+    color: #00d4ff;
+    background: #14142a;
+    padding: 0.3rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #2a2a4a;
+}
+
+/* Flashing timer signals a paused state to the player */
+.timer-display.paused-flash { animation: pauseFlash 1s infinite; }
+@keyframes pauseFlash { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.btn {
+    padding: 0.6rem 1.4rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.btn:hover { opacity: 0.85; }
+.btn-primary { background: #7b2ff7; color: #fff; }
+.btn-secondary { background: #2a2a4a; color: #ccc; }
+
+.back-btn {
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #999;
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.back-btn:hover { border-color: #7b2ff7; color: #e0e0e0; }
+
+.stats-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.stat { text-align: center; }
+.stat .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat .value { font-size: 1.3rem; font-weight: 700; color: #00d4ff; }
+
+/* ── Countdown Overlay ─────────────────────── */
+/* Full-screen "3-2-1-Go" overlay rendered above the game (z-index:200) before each session starts */
+.countdown-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.countdown-overlay.active { display: flex; }
+
+.countdown-num {
+    font-size: 8rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: countPop 0.5s ease-out;
+}
+
+.countdown-label {
+    font-size: 1.2rem;
+    color: #888;
+    margin-top: 1rem;
+}
+
+@keyframes countPop {
+    0% { transform: scale(1.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Session complete overlay ──────────────── */
+/* End-of-session results modal (z-index:100, below countdown overlay at 200) */
+.overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay.active { display: flex; }
+
+.overlay-box {
+    background: #14142a;
+    border: 1px solid #2a2a4a;
+    border-radius: 16px;
+    padding: 2.5rem;
+    text-align: center;
+    max-width: 420px;
+}
+
+.overlay-box h2 { font-size: 1.5rem; margin-bottom: 1rem; color: #00d4ff; }
+.overlay-box p { color: #999; margin-bottom: 1.5rem; line-height: 1.6; }
+.overlay-box .btn { margin: 0.3rem; }
+
+/* ── Difficulty Selector ───────────────────── */
+/* Pill-style difficulty buttons; active state highlighted in purple to show selection */
+.difficulty-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.diff-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    background: #14142a;
+    color: #999;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.diff-btn:hover { border-color: #555; }
+.diff-btn.active { border-color: #7b2ff7; color: #7b2ff7; background: #1a1a40; }
+
+/* ═══════════════════════════════════════════
+   SCHULTE TABLE
+   Peripheral-vision/attention speed test: tap numbers 1–N in order.
+   Grid size switches between 3×3, 5×5, and 7×7 via modifier classes.
+   Correct tap → green flash; wrong tap → red flash + shake animation.
+   ═══════════════════════════════════════════ */
+.schulte-board {
+    display: grid;
+    gap: 6px;
+    width: min(400px, 90vw);
+    aspect-ratio: 1;
+    margin-bottom: 1rem;
+}
+
+.schulte-board.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.schulte-board.grid-5 { grid-template-columns: repeat(5, 1fr); }
+.schulte-board.grid-7 { grid-template-columns: repeat(7, 1fr); }
+
+.schulte-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a35;
+    border: 2px solid #2a2a4a;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+}
+
+.schulte-board.grid-7 .schulte-cell { font-size: 1.1rem; border-radius: 6px; }
+.schulte-board.grid-3 .schulte-cell { font-size: 2.2rem; }
+
+.schulte-cell:hover { border-color: #7b2ff7; }
+.schulte-cell.correct { background: #1a3a1a; border-color: #2ecc71; transform: scale(0.95); }
+.schulte-cell.wrong { background: #3a1a1a; border-color: #e74c3c; animation: shake 0.3s; }
+.schulte-cell.center-marker { background: #2a1a4a; border-color: #7b2ff7; }
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+.schulte-instruction {
+    font-size: 1rem;
+    color: #888;
+    margin-bottom: 0.8rem;
+    text-align: center;
+}
+
+.schulte-next-num {
+    font-size: 1.3rem;
+    color: #7b2ff7;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+/* ═══════════════════════════════════════════
+   TETRIS
+   Visuospatial/processing-speed game rendered on an HTML5 canvas.
+   Canvas sizing is controlled via JS at 2× device pixel ratio for HiDPI
+   screens; the CSS width/height here just set the display size, not the
+   pixel buffer. touch-action:none on the canvas prevents scroll interference
+   on mobile. Touch D-pad buttons are hidden until a coarse pointer is detected.
+   ═══════════════════════════════════════════ */
+.tetris-wrapper {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+#tetris-canvas {
+    border: 2px solid #2a2a4a;
+    border-radius: 4px;
+    background: #0a0a1a;
+    touch-action: none;
+    will-change: transform;
+}
+
+.tetris-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.tetris-side .label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
+.tetris-side .value { font-size: 1.4rem; font-weight: 700; color: #00d4ff; }
+
+#tetris-next-canvas {
+    border: 1px solid #2a2a4a;
+    border-radius: 4px;
+    background: #0a0a1a;
+}
+
+.tetris-controls-hint {
+    color: #666;
+    font-size: 0.8rem;
+    text-align: center;
+    margin-top: 0.8rem;
+    line-height: 1.6;
+}
+
+.touch-controls {
+    display: none;
+    gap: 10px;
+    margin-top: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.touch-btn {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #2a2a4a;
+    border-radius: 12px;
+    background: #14142a;
+    color: #ccc;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.touch-btn:active { background: #2a2a4a; border-color: #7b2ff7; }
+.touch-btn.wide { width: 130px; font-size: 0.9rem; font-weight: 600; }
+
+@media (pointer: coarse) {
+    .touch-controls { display: flex; }
+    .tetris-controls-hint { display: none; }
+}
+
+/* ═══════════════════════════════════════════
+   STROOP CHALLENGE
+   Cognitive interference task: player taps the ink color of a word, not its meaning.
+   2×2 color-button grid; .flash-correct/.flash-wrong provide momentary feedback.
+   Key-hint labels (top-right of each button) show keyboard shortcuts for desktop.
+   ═══════════════════════════════════════════ */
+.stroop-word {
+    font-size: 4rem;
+    font-weight: 900;
+    margin: 2rem 0;
+    user-select: none;
+    min-height: 5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stroop-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.stroop-btn {
+    padding: 1rem;
+    border: 2px solid #2a2a4a;
+    border-radius: 12px;
+    background: #14142a;
+    color: #e0e0e0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.1s;
+    position: relative;
+}
+
+.stroop-btn:hover { border-color: #555; transform: scale(1.03); }
+.stroop-btn.flash-correct { background: #1a3a1a; border-color: #2ecc71; }
+.stroop-btn.flash-wrong { background: #3a1a1a; border-color: #e74c3c; }
+
+.stroop-btn .key-hint {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 0.6rem;
+    color: #555;
+    font-weight: 400;
+}
+
+.stroop-feedback {
+    font-size: 1.2rem;
+    font-weight: 600;
+    min-height: 2rem;
+    margin-top: 1rem;
+}
+
+.stroop-difficulty-label {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════
+   TRAIL MAKING TEST (Part A & B)
+   Processing-speed/set-shifting test drawn on a full-width canvas.
+   touch-action:none on the canvas is required for pointer events to fire on mobile.
+   The canvas pixel buffer is sized at devicePixelRatio in JS; CSS width:100% scales it.
+   Part B reuses .trails-canvas-wrap (see comment at line ~635).
+   ═══════════════════════════════════════════ */
+.trails-canvas-wrap {
+    width: 100%;
+    max-width: 700px;
+    position: relative;
+}
+
+.trails-canvas-wrap canvas {
+    width: 100%;
+    border-radius: 12px;
+    touch-action: none;
+    background: #0d0d20;
+    border: 1px solid #2a2a4a;
+}
+
+/* ═══════════════════════════════════════════
+   GO / NO-GO
+   Inhibitory-control task: tap on green circles (Go), withhold on red (No-Go).
+   .gonogo-tap-btn is hidden on desktop; shown only for coarse (touch) pointers.
+   .feedback-hit shrinks the circle on a correct tap; .feedback-fa shakes on false alarm.
+   ═══════════════════════════════════════════ */
+.gonogo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 280px;
+    width: 100%;
+    max-width: 700px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.gonogo-circle {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: #1a1a35;
+    border: 3px solid #2a2a4a;
+    transition: transform 0.08s;
+}
+
+.gonogo-circle.go { background: #2ecc71; border-color: #27ae60; box-shadow: 0 0 40px rgba(46,204,113,0.3); }
+.gonogo-circle.nogo { background: #e74c3c; border-color: #c0392b; box-shadow: 0 0 40px rgba(231,76,60,0.3); }
+.gonogo-circle.feedback-hit { transform: scale(0.9); }
+.gonogo-circle.feedback-fa { animation: shake 0.3s; }
+
+.gonogo-tap-btn {
+    display: none;
+    margin-top: 1.5rem;
+    padding: 1rem 3rem;
+    font-size: 1.2rem;
+    background: #7b2ff7;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+@media (pointer: coarse) {
+    .gonogo-tap-btn { display: block; }
+}
+
+/* ── Trail Making B ─────────────────────────── */
+/* Reuses .trails-canvas-wrap from Trail Making A — no additional styles needed */
+
+/* ── Card Sort (WCST) ────────────────────────── */
+/* Wisconsin Card Sorting Test: player matches a stimulus card to a reference by
+   an unknown rule (color/shape/number) that changes without warning after a run of hits */
+.cardsort-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.5rem;
+}
+
+.cardsort-references {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.cardsort-card {
+    width: 90px;
+    height: 120px;
+    background: #14142a;
+    border: 2px solid #2a2a4a;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.cardsort-ref:hover {
+    border-color: #7b2ff7;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px #7b2ff733;
+}
+
+.cardsort-ref.cardsort-correct {
+    border-color: #2ecc71;
+    box-shadow: 0 0 16px #2ecc7144;
+}
+
+.cardsort-ref.cardsort-wrong {
+    border-color: #e74c3c;
+    box-shadow: 0 0 16px #e74c3c44;
+    animation: shake 0.3s;
+}
+
+.cardsort-stim {
+    width: 110px;
+    height: 140px;
+    border-color: #7b2ff7;
+    cursor: default;
+    background: #1a1a35;
+}
+
+.cardsort-shapes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    padding: 6px;
+}
+
+.cardsort-label {
+    color: #888;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.cardsort-feedback {
+    font-size: 1.1rem;
+    font-weight: 700;
+    min-height: 1.4em;
+    text-align: center;
+}
+
+/* ── Tower of London ──────────────────────────── */
+/* Planning/executive-function task: move colored discs between pegs to match a goal state.
+   .tower-discs uses column-reverse so discs stack bottom-up inside a position:relative rod.
+   .tower-disc.selected lifts the top disc visually; .peg-selected highlights the source peg. */
+.tower-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+.tower-label {
+    color: #888;
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.tower-pegs {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+}
+
+.tower-peg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 110px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.tower-peg-rod {
+    width: 8px;
+    height: 120px;
+    background: #2a2a4a;
+    border-radius: 4px;
+    position: relative;
+}
+
+.tower-peg-base {
+    width: 100px;
+    height: 8px;
+    background: #2a2a4a;
+    border-radius: 4px;
+    margin-top: -2px;
+}
+
+.tower-discs {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 2px;
+}
+
+.tower-disc {
+    height: 22px;
+    border-radius: 6px;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.tower-disc.selected {
+    transform: translateY(-8px);
+    box-shadow: 0 4px 12px rgba(123, 47, 247, 0.5);
+}
+
+.tower-peg.peg-selected .tower-peg-rod {
+    background: #7b2ff7;
+}
+
+.tower-goal-pegs {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+}
+
+.tower-goal-peg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80px;
+}
+
+.tower-goal-peg .tower-peg-rod {
+    height: 80px;
+    width: 6px;
+}
+
+.tower-goal-peg .tower-peg-base {
+    width: 70px;
+    height: 6px;
+}
+
+.tower-goal-peg .tower-disc {
+    height: 16px;
+}
+
+.tower-feedback {
+    font-size: 1rem;
+    font-weight: 700;
+    min-height: 1.3em;
+    text-align: center;
+}
+
+/* ── Symbol Digit (SDMT) ─────────────────────── */
+/* Processing-speed task: match abstract symbols to digits using a reference key.
+   .sdmt-key shows the symbol-to-digit lookup table; .sdmt-stimulus displays the current symbol;
+   player taps one of nine digit buttons to respond. */
+.sdmt-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+.sdmt-key {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: #14142a;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+.sdmt-key-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 48px;
+    gap: 2px;
+}
+
+.sdmt-key-symbol {
+    font-size: 1.4rem;
+    color: #ccc;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sdmt-key-digit {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #7b2ff7;
+    border-top: 1px solid #2a2a4a;
+    width: 100%;
+    text-align: center;
+    padding-top: 2px;
+}
+
+.sdmt-stimulus {
+    font-size: 4rem;
+    color: #fff;
+    min-height: 5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sdmt-digits {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.sdmt-digit-btn {
+    width: 52px;
+    height: 52px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    background: #14142a;
+    color: #ccc;
+    border: 2px solid #2a2a4a;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.sdmt-digit-btn:hover {
+    border-color: #7b2ff7;
+    background: #1a1a40;
+}
+
+.sdmt-digit-btn:active {
+    background: #7b2ff7;
+    color: #fff;
+}
+
+.sdmt-round-timer {
+    font-size: 0.9rem;
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+/* ── Word List Learning ──────────────────────── */
+/* Verbal memory task with three phases: study (words shown one at a time),
+   free recall (text input, .wordlist-input-area visible), and recognition
+   (.wordlist-recognition visible — "Old/New" buttons color-coded green/red). */
+.wordlist-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.wordlist-display {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.wordlist-input-area {
+    display: none;
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+.wordlist-input-area input {
+    flex: 1;
+    padding: 0.6rem 1rem;
+    font-size: 1.1rem;
+    background: #14142a;
+    border: 2px solid #2a2a4a;
+    border-radius: 10px;
+    color: #fff;
+    outline: none;
+}
+
+.wordlist-input-area input:focus {
+    border-color: #7b2ff7;
+}
+
+.wordlist-input-area button {
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    background: #7b2ff7;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.wordlist-recognition {
+    display: none;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.wordlist-recog-btn {
+    padding: 0.7rem 2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    border: 2px solid #2a2a4a;
+    border-radius: 10px;
+    background: #14142a;
+    color: #ccc;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.wordlist-recog-btn[data-response="old"] { border-color: #2ecc71; color: #2ecc71; }
+.wordlist-recog-btn[data-response="new"] { border-color: #e74c3c; color: #e74c3c; }
+.wordlist-recog-btn:hover { opacity: 0.8; }
+
+.wordlist-feedback {
+    font-size: 1rem;
+    font-weight: 700;
+    min-height: 1.3em;
+    text-align: center;
+}
+
+.wordlist-recall-timer {
+    display: none;
+    font-size: 0.9rem;
+    color: #00d4ff;
+    font-weight: 600;
+}
+
+/* ── CPT (AX-CPT) ───────────────────────────── */
+/* Continuous Performance Test: sustained-attention task where the player taps
+   only when letter "X" follows letter "A". Letters cycle rapidly in .cpt-letter;
+   .cpt-target (cyan) flags a potential target; .cpt-hit (green) / .cpt-error (red+shake)
+   give immediate response feedback. */
+.cpt-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 1rem;
+    cursor: pointer;
+}
+
+.cpt-letter {
+    font-size: 8rem;
+    font-weight: 700;
+    color: #fff;
+    min-height: 10rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+
+.cpt-letter.cpt-target { color: #00d4ff; }
+.cpt-letter.cpt-hit { color: #2ecc71; }
+.cpt-letter.cpt-error { color: #e74c3c; animation: shake 0.3s; }
+
+.cpt-context {
+    font-size: 0.9rem;
+    min-height: 1.2em;
+}
+
+/* ── Cognitive Profile ───────────────────────── */
+/* Summary view showing domain scores, radar chart, and per-game history.
+   max-height:calc(100vh - 80px) lets the content panel scroll independently
+   inside the fixed-position game-screen container. */
+.profile-content {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 80px);
+}
+
+/* Amber disclaimer banner reminding users this is not a clinical diagnostic tool */
+.profile-disclaimer {
+    background: #2a1a0a;
+    border: 1px solid #f39c12;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: #f39c12;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.profile-section {
+    background: #14142a;
+    border: 1px solid #1e1e3a;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.profile-section h3 {
+    color: #7b2ff7;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#profile-radar {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+.profile-domains {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 0.75rem;
+}
+
+.profile-domain-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.5rem;
+    background: #0d0d20;
+    border-radius: 6px;
+}
+
+.pd-name { color: #ccc; font-weight: 600; }
+.pd-score { font-weight: 700; }
+
+.profile-pattern-box {
+    color: #ccc;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.profile-retest {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.profile-retest-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0.5rem;
+    background: #0d0d20;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.profile-retest-note {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #0a2a1a;
+    border: 1px solid #2ecc71;
+    border-radius: 8px;
+    color: #2ecc71;
+    font-size: 0.8rem;
+}
+
+.profile-game-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.profile-game-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.3rem 0.5rem;
+    background: #0d0d20;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #ccc;
+}
+
+/* ── Score History ─────────────────────────── */
+/* Scrollable list of past sessions on the landing page; max-height:300px keeps it compact */
+.history-section {
+    max-width: 960px;
+    width: 100%;
+    margin-top: 2.5rem;
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.history-header h3 {
+    font-size: 1.1rem;
+    color: #888;
+}
+
+.history-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.history-section .action-btn {
+    font-size: 0.75rem;
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #666;
+    padding: 0.25rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.history-section .action-btn:hover { border-color: #7b2ff7; color: #aaa; }
+.history-section .action-btn.danger:hover { border-color: #e74c3c; color: #e74c3c; }
+
+.history-empty {
+    color: #555;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1rem;
+}
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.history-entry {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #14142a;
+    border: 1px solid #1e1e3a;
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+}
+
+.history-entry .h-game {
+    font-weight: 700;
+    color: #7b2ff7;
+    min-width: 80px;
+}
+
+.history-entry .h-details {
+    color: #aaa;
+    flex: 1;
+}
+
+.history-entry .h-date {
+    color: #555;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+/* ── Analytics Row ─────────────────────────── */
+/* Responsive grid of per-game analytics cards, each with key metrics and a sparkline canvas */
+.analytics-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    max-width: 960px;
+    width: 100%;
+    margin-top: 1.5rem;
+}
+
+.analytics-card {
+    background: #14142a;
+    border: 1px solid #1e1e3a;
+    border-radius: 12px;
+    padding: 1.2rem;
+}
+
+.analytics-card h4 {
+    font-size: 0.85rem;
+    color: #7b2ff7;
+    margin-bottom: 0.8rem;
+    font-weight: 700;
+}
+
+.analytics-metrics {
+    display: flex;
+    gap: 1.2rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.analytics-metric .am-label { font-size: 0.7rem; color: #666; text-transform: uppercase; }
+.analytics-metric .am-value { font-size: 1.1rem; font-weight: 700; color: #00d4ff; }
+
+.sparkline-canvas {
+    width: 100%;
+    height: 40px;
+    border-radius: 4px;
+}
+
+/* ── Import file input (hidden) ────────────── */
+/* Invisible <input type="file"> triggered programmatically by the Import button */
+#import-file { display: none; }
+
+/* ── Reduced Motion ────────────────────────── */
+/* Respects OS-level "reduce motion" accessibility setting by collapsing all animations */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ── Fullscreen Button ────────────────────── */
+/* Triggers the Fullscreen API; improves immersion on desktop and kiosk-style tablets */
+.fullscreen-btn {
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #888;
+    font-size: 1.1rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 0.5rem;
+    line-height: 1;
+}
+
+.fullscreen-btn:hover { border-color: #7b2ff7; color: #e0e0e0; }
+
+/* ── Colorblind Toggle ────────────────────── */
+/* When .active, JS swaps the palette to shape+pattern cues so red/green states remain distinct */
+.cb-toggle {
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #888;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 0.5rem;
+}
+
+.cb-toggle:hover { border-color: #7b2ff7; color: #e0e0e0; }
+.cb-toggle.active { border-color: #2ecc71; color: #2ecc71; }
+
+/* ── Pause Overlay ────────────────────────── */
+/* Full-screen pause modal shown during any game (z-index:150, between game and countdown) */
+.pause-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 150;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.pause-overlay.active { display: flex; }
+
+.pause-box {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.pause-icon {
+    font-size: 4rem;
+    color: #7b2ff7;
+}
+
+.pause-box h2 {
+    font-size: 2rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.pause-hint {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.pause-box .btn { min-width: 160px; }
+
+/* Floating pause hint shown at bottom-right of each game screen */
+.pause-key-hint {
+    position: fixed;
+    bottom: max(12px, env(safe-area-inset-bottom, 12px));
+    right: max(12px, env(safe-area-inset-right, 12px));
+    font-size: 0.7rem;
+    color: #444;
+    background: #0a0a1a;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #1e1e3a;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* ── User Switcher ────────────────────────── */
+/* Header dropdown for multi-user switching; avatar circle + name + chevron */
+.user-switcher {
+    position: relative;
+}
+
+.user-switcher-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #ccc;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.user-switcher-btn:hover { border-color: #7b2ff7; color: #e0e0e0; }
+.user-switcher-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.user-avatar {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #555;
+    flex-shrink: 0;
+}
+
+.user-chevron {
+    font-size: 0.65rem;
+    color: #666;
+}
+
+.user-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 200px;
+    background: #14142a;
+    border: 1px solid #2a2a4a;
+    border-radius: 12px;
+    padding: 0.5rem 0;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.user-dropdown.open { display: block; }
+
+.user-dropdown-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 0.85rem;
+    color: #ccc;
+}
+
+.user-dropdown-item:hover { background: #1a1a35; }
+.user-dropdown-item.active { background: #1a1a40; border-left: 3px solid #7b2ff7; }
+
+.user-item-name { flex: 1; }
+
+.user-edit-btn {
+    background: none;
+    border: none;
+    color: #555;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    transition: color 0.15s;
+}
+
+.user-edit-btn:hover { color: #7b2ff7; }
+
+.user-dropdown-actions {
+    border-top: 1px solid #2a2a4a;
+    padding: 0.4rem 0.75rem 0.2rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.user-dropdown-action {
+    flex: 1;
+    background: none;
+    border: 1px solid #2a2a4a;
+    color: #888;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.user-dropdown-action:hover { border-color: #7b2ff7; color: #ccc; }
+
+/* ── User Modal ──────────────────────────── */
+/* Create/edit overlay; reuses .overlay pattern from session-complete */
+.user-modal-box { max-width: 360px; }
+
+.user-modal-input {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    background: #0a0a1a;
+    border: 2px solid #2a2a4a;
+    border-radius: 10px;
+    color: #fff;
+    outline: none;
+    margin-bottom: 1rem;
+}
+
+.user-modal-input:focus { border-color: #7b2ff7; }
+
+.user-color-picker {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 1.2rem;
+}
+
+.user-color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: border-color 0.15s, transform 0.1s;
+}
+
+.user-color-option:hover { transform: scale(1.15); }
+.user-color-option.selected { border-color: #fff; transform: scale(1.15); }
+
+.user-modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: #fff;
+    padding: 0.6rem 1.4rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-danger:hover { opacity: 0.85; }
+
+/* ── Settings user label ─────────────────── */
+.settings-user-label {
+    font-size: 0.85rem;
+    color: #7b2ff7;
+    font-weight: 600;
+}
+
+/* ── Profile user heading ────────────────── */
+.profile-user-heading {
+    text-align: center;
+    font-size: 1.2rem;
+    color: #00d4ff;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Responsive ────────────────────────────── */
+/* Mobile breakpoint (<600px): shrink large text/circles/buttons to fit small screens */
+@media (max-width: 600px) {
+    #landing h1 { font-size: 1.6rem; }
+    .schulte-cell { font-size: 1.1rem; }
+    .schulte-board.grid-7 .schulte-cell { font-size: 0.85rem; }
+    .stroop-word { font-size: 2.8rem; }
+    .stroop-buttons { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stroop-btn { padding: 0.7rem; font-size: 0.95rem; }
+    .touch-btn { width: 52px; height: 52px; font-size: 1.3rem; }
+    .gonogo-circle { width: 140px; height: 140px; }
+}

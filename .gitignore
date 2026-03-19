@@ -1,0 +1,13 @@
+# Dev/build artifacts
+_tmp_parts/
+backups/
+.claude/
+
+# Legacy single-file versions (kept locally, not in repo)
+DoddGames.html
+bouncyballs.html
+game.js
+
+# OS files
+Thumbs.db
+.DS_Store
