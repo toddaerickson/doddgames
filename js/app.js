@@ -143,9 +143,21 @@ class App {
         const resumeBtn = document.getElementById('pause-resume-btn');
         if (resumeBtn) resumeBtn.addEventListener('click', () => this.togglePause());
 
+        // Mobile pause button — visible on touch devices during gameplay
+        const mobilePauseBtn = document.getElementById('mobile-pause-btn');
+        if (mobilePauseBtn) {
+            mobilePauseBtn.addEventListener('click', () => this.togglePause());
+        }
+
+        // Login prompt — wire up buttons
+        this._initLoginPrompt();
+
         // Initial render
         this._renderUserSwitcher();
         this.scores.renderAll();
+
+        // Show login prompt on first load if no active user
+        this._maybeShowLoginPrompt();
     }
 
     /**
@@ -335,6 +347,16 @@ class App {
             pauseHint.style.display = '';
         }
 
+        // Show mobile pause button on touch devices (Tetris has its own)
+        const mobilePauseBtn = document.getElementById('mobile-pause-btn');
+        if (mobilePauseBtn) {
+            if (game === 'tetris') {
+                mobilePauseBtn.classList.remove('visible');
+            } else {
+                mobilePauseBtn.classList.add('visible');
+            }
+        }
+
         this._showCountdown(() => {
             document.getElementById(`${game}-screen`).classList.add('active');
             this.timeLeft = this.SESSION_DURATION;
@@ -414,6 +436,8 @@ class App {
         document.getElementById('pause-overlay').classList.remove('active');
         const pauseHint = document.getElementById('pause-key-hint');
         if (pauseHint) pauseHint.style.display = 'none';
+        const mobilePauseBtn = document.getElementById('mobile-pause-btn');
+        if (mobilePauseBtn) mobilePauseBtn.classList.remove('visible');
         document.getElementById('landing').style.display = 'flex';
         this.currentGame = null;
         // Re-enable user switching
@@ -751,6 +775,74 @@ class App {
             this.users.deleteUser(this._editingUserId);
             this._closeUserModal();
         }
+    }
+
+    // ── Login prompt ─────────────────────────────────────────────────────
+
+    /**
+     * Wires event listeners for the login prompt modal buttons.
+     */
+    _initLoginPrompt() {
+        const newUserBtn = document.getElementById('login-new-user-btn');
+        if (newUserBtn) {
+            newUserBtn.addEventListener('click', () => {
+                this._closeLoginPrompt();
+                this._openUserModal();
+            });
+        }
+
+        const guestBtn = document.getElementById('login-guest-btn');
+        if (guestBtn) {
+            guestBtn.addEventListener('click', () => {
+                this._closeLoginPrompt();
+            });
+        }
+    }
+
+    /**
+     * Shows the login prompt if no user is currently active (guest mode).
+     * Populates the existing user list so returning users can tap to log in.
+     */
+    _maybeShowLoginPrompt() {
+        if (this.users.getActiveUser()) return;
+
+        const modal = document.getElementById('login-prompt');
+        const list = document.getElementById('login-user-list');
+        if (!modal || !list) return;
+
+        const users = this.users.getUsers();
+        list.innerHTML = '';
+
+        if (users.length > 0) {
+            users.forEach(u => {
+                const item = document.createElement('div');
+                item.className = 'login-user-item';
+
+                const avatar = document.createElement('span');
+                avatar.className = 'user-avatar';
+                avatar.style.background = u.color;
+
+                const name = document.createElement('span');
+                name.className = 'login-user-item-name';
+                name.textContent = u.name;
+
+                item.appendChild(avatar);
+                item.appendChild(name);
+                item.addEventListener('click', () => {
+                    this.users.switchUser(u.id);
+                    this._closeLoginPrompt();
+                });
+                list.appendChild(item);
+            });
+        }
+
+        modal.classList.add('active');
+    }
+
+    /** Closes the login prompt modal. */
+    _closeLoginPrompt() {
+        const modal = document.getElementById('login-prompt');
+        if (modal) modal.classList.remove('active');
     }
 
     /**

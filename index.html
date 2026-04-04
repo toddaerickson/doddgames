@@ -636,6 +636,23 @@
 <!-- Floating pause key hint — visible during game sessions only -->
 <div class="pause-key-hint" id="pause-key-hint" style="display:none">Space to pause</div>
 
+<!-- Mobile pause button — visible on touch devices during game sessions (not Tetris, which has its own) -->
+<button class="mobile-pause-btn" id="mobile-pause-btn" style="display:none" aria-label="Pause game">&#9208;</button>
+
+<!-- ═══════════ LOGIN PROMPT ═══════════ -->
+<!-- Shown on page load when no user is logged in; encourages profile selection so scores are recorded. -->
+<div class="overlay" id="login-prompt">
+    <div class="overlay-box login-prompt-box">
+        <h2>Welcome to DoddGames</h2>
+        <p>Log in to track your scores and cognitive profile across sessions.</p>
+        <div class="login-user-list" id="login-user-list"></div>
+        <div class="login-prompt-actions">
+            <button class="btn btn-primary" id="login-new-user-btn">+ Create Profile</button>
+            <button class="btn btn-secondary" id="login-guest-btn">Continue as Guest</button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══════════ PAUSE OVERLAY ═══════════ -->
 <!-- Shown when the player pauses during any game session. z-index sits between game and countdown. -->
 <div class="pause-overlay" id="pause-overlay">
