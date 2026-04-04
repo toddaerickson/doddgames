@@ -1609,6 +1609,106 @@ html {
     margin-bottom: 0.5rem;
 }
 
+/* ── Mobile Pause Button ─────────────────── */
+/* Floating pause button for touch devices; appears during all games except Tetris
+   (which has its own PAUSE in the touch-controls row). Hidden on pointer:fine (mouse). */
+.mobile-pause-btn {
+    display: none;
+    position: fixed;
+    bottom: max(80px, calc(env(safe-area-inset-bottom, 20px) + 60px));
+    right: max(16px, env(safe-area-inset-right, 16px));
+    width: 56px;
+    height: 56px;
+    border: 2px solid #2a2a4a;
+    border-radius: 50%;
+    background: rgba(20, 20, 42, 0.9);
+    color: #00d4ff;
+    font-size: 1.6rem;
+    cursor: pointer;
+    z-index: 120;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.mobile-pause-btn:active {
+    transform: scale(0.9);
+    border-color: #7b2ff7;
+}
+
+/* Only show on touch devices when the .visible class is toggled on by app.js */
+@media (pointer: coarse) {
+    .mobile-pause-btn.visible {
+        display: flex;
+    }
+}
+
+/* ── Login Prompt ────────────────────────── */
+/* First-load modal prompting the user to select or create a profile. */
+.login-prompt-box {
+    max-width: 400px;
+}
+
+.login-prompt-box h2 {
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.login-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.login-user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    background: #1a1a35;
+    border: 1px solid #2a2a4a;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.login-user-item:hover {
+    border-color: #7b2ff7;
+    background: #22224a;
+}
+
+.login-user-item .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.login-user-item-name {
+    font-size: 1rem;
+    color: #e0e0e0;
+    font-weight: 500;
+}
+
+.login-prompt-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.login-prompt-actions .btn {
+    width: 100%;
+}
+
 /* ── Responsive ────────────────────────────── */
 /* Mobile breakpoint (<600px): shrink large text/circles/buttons to fit small screens */
 @media (max-width: 600px) {
