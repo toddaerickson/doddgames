@@ -26,6 +26,7 @@ import { TowerGame } from './games/tower.js';
 import { SymbolDigitGame } from './games/symbol-digit.js';
 import { WordListGame } from './games/word-list.js';
 import { CPTGame } from './games/cpt.js';
+import { DigitSpanGame } from './games/digit-span.js';
 import { ProfileManager } from './profile.js';
 
 class App {
@@ -59,6 +60,7 @@ class App {
         this.symbolDigit = new SymbolDigitGame(this);
         this.wordList = new WordListGame(this);
         this.cpt = new CPTGame(this);
+        this.digitSpan = new DigitSpanGame(this);
         this.profile = new ProfileManager(this.scores);
 
         // Tracks whether the game was running before the tab was hidden,
@@ -81,6 +83,7 @@ class App {
             'symbol-digit': this.symbolDigit,
             'word-list': this.wordList,
             'cpt': this.cpt,
+            'digit-span': this.digitSpan,
         };
 
         // Sound toggle

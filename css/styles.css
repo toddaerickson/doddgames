@@ -1709,6 +1709,105 @@ html {
     width: 100%;
 }
 
+/* ── Digit Span ───────────────────────────── */
+.digit-span-instruction {
+    text-align: center;
+    color: #aaa;
+    font-size: 0.95rem;
+    margin: 0.5rem 0;
+    min-height: 1.4em;
+}
+
+.digit-span-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1rem;
+    flex: 1;
+}
+
+.digit-span-display {
+    font-size: 4rem;
+    font-weight: 700;
+    color: #00d4ff;
+    min-height: 5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s;
+}
+.digit-span-display.presenting { opacity: 1; }
+.digit-span-display.digit-flash {
+    animation: digitPulse 0.3s ease-out;
+}
+@keyframes digitPulse {
+    0%   { transform: scale(1.3); opacity: 0.6; }
+    100% { transform: scale(1);   opacity: 1; }
+}
+
+.digit-span-input {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    letter-spacing: 0.3em;
+    min-height: 2.6rem;
+    text-align: center;
+    border-bottom: 2px solid #333;
+    padding: 0.3rem 1rem;
+    min-width: 160px;
+}
+
+.digit-span-feedback {
+    font-size: 1rem;
+    font-weight: 600;
+    min-height: 1.4em;
+    text-align: center;
+}
+.digit-span-feedback.correct { color: #2ecc71; }
+.digit-span-feedback.incorrect { color: #e74c3c; }
+
+.digit-span-numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 260px;
+    width: 100%;
+}
+.digit-span-numpad .digit-btn {
+    width: 100%;
+    height: 56px;
+    font-size: 1.4rem;
+    font-weight: 600;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    touch-action: manipulation;
+}
+.digit-span-numpad .digit-btn:hover:not(:disabled) {
+    background: #2a2a4a;
+    border-color: #7b2ff7;
+}
+.digit-span-numpad .digit-btn:active:not(:disabled) {
+    background: #3a3a5a;
+}
+.digit-span-numpad .digit-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+.digit-span-submit {
+    background: #1a3a1a !important;
+    color: #2ecc71 !important;
+    border-color: #2ecc71 !important;
+}
+.digit-span-backspace {
+    color: #e74c3c !important;
+    border-color: #555 !important;
+}
+
 /* ── Responsive ────────────────────────────── */
 /* Mobile breakpoint (<600px): shrink large text/circles/buttons to fit small screens */
 @media (max-width: 600px) {
@@ -1720,4 +1819,8 @@ html {
     .stroop-btn { padding: 0.7rem; font-size: 0.95rem; }
     .touch-btn { width: 52px; height: 52px; font-size: 1.3rem; }
     .gonogo-circle { width: 140px; height: 140px; }
+    .digit-span-display { font-size: 3rem; min-height: 4rem; }
+    .digit-span-input { font-size: 1.5rem; }
+    .digit-span-numpad { max-width: 220px; }
+    .digit-span-numpad .digit-btn { height: 48px; font-size: 1.2rem; }
 }

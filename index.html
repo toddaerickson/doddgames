@@ -232,6 +232,17 @@
                     <canvas class="card-sparkline" width="80" height="24"></canvas>
                 </div>
             </div>
+            <div class="card" onclick="app.startGame('digit-span')">
+                <div class="icon">&#128290;</div>
+                <h2>Digit Span</h2>
+                <p>Remember and repeat digit sequences forward and backward. Tests short-term and working memory capacity.</p>
+                <div class="duration">5 minutes &middot; Working Memory</div>
+                <div class="card-best" id="card-best-digit-span">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -568,6 +579,43 @@
             <span id="wordlist-recog-progress"></span>
         </div>
         <div class="wordlist-feedback" id="wordlist-feedback"></div>
+    </div>
+</div>
+
+<!-- ═══════════ DIGIT SPAN ═══════════ -->
+<!-- Memory — Forward and reverse digit recall; measures phonological loop and central executive. -->
+<div id="digit-span-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>Digit Span</h2>
+        <div class="timer-display" id="digit-span-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-digit-span" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Phase</div><div class="value" id="digit-span-phase" role="status" aria-live="polite">Forward</div></div>
+        <div class="stat"><div class="label">Span</div><div class="value" id="digit-span-stat" role="status" aria-live="polite">--</div></div>
+        <div class="stat"><div class="label">Trials</div><div class="value" id="digit-span-trial" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Correct</div><div class="value" id="digit-span-correct" role="status" aria-live="polite">0</div></div>
+    </div>
+    <p class="digit-span-instruction" id="digit-span-instruction">Forward Span — watch the digits, then repeat them in order</p>
+    <div class="digit-span-area">
+        <div class="digit-span-display" id="digit-span-display"></div>
+        <div class="digit-span-input" id="digit-span-input"></div>
+        <div class="digit-span-feedback" id="digit-span-feedback"></div>
+        <div class="digit-span-numpad" id="digit-span-numpad">
+            <button class="digit-btn" data-digit="1">1</button>
+            <button class="digit-btn" data-digit="2">2</button>
+            <button class="digit-btn" data-digit="3">3</button>
+            <button class="digit-btn" data-digit="4">4</button>
+            <button class="digit-btn" data-digit="5">5</button>
+            <button class="digit-btn" data-digit="6">6</button>
+            <button class="digit-btn" data-digit="7">7</button>
+            <button class="digit-btn" data-digit="8">8</button>
+            <button class="digit-btn" data-digit="9">9</button>
+            <button class="digit-btn digit-span-backspace" id="digit-span-backspace" title="Backspace" aria-label="Backspace">&#9003;</button>
+            <button class="digit-btn" data-digit="0">0</button>
+            <button class="digit-btn digit-span-submit" id="digit-span-submit" title="Submit" aria-label="Submit">&#10003;</button>
+        </div>
     </div>
 </div>
 
