@@ -1,22 +1,34 @@
-/* ═══════════════���══════════════════════════════
-   Rummy 5000 ��� Main Application Controller
-   ════════════════════════���═════════════════════ */
+/* ══════════════════════════════════════════════
+   Rummy 5000 — Main Application Controller
+   ══════════════════════════════════════════════ */
 
 import { createCardEl, createCardBack, createMeldGroup } from './cards.js';
 
+const SUIT_SYMBOLS = {
+    hearts: '\u2665', diamonds: '\u2666', clubs: '\u2663', spades: '\u2660'
+};
+
+function cardDisplayName(card) {
+    if (!card) return '?';
+    if (card.is_joker) return 'Joker';
+    const sym = SUIT_SYMBOLS[card.suit] || card.suit;
+    return `${card.rank}${sym}`;
+}
+
 class App {
     constructor() {
-        this.state = null;          // Current game state from server
-        this.selectedCards = new Set(); // Card IDs selected in hand
+        this.state = null;
+        this.selectedCards = new Set();
         this.difficulty = 'medium';
         this.targetScore = 5000;
+        this._meldClickAbort = null; // AbortController for meld selection listeners
+        this._handRendered = false;  // track if initial deal animation done
 
         this._bindNavigation();
         this._bindSetup();
         this._bindGameActions();
         this._bindProfiles();
 
-        // Check for active profile on load
         this._checkActiveProfile();
     }
 
@@ -42,9 +54,14 @@ class App {
     _showScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(`screen-${id}`).classList.add('active');
+        // Hide overlays when leaving game screen
+        if (id !== 'game') {
+            document.getElementById('round-overlay').style.display = 'none';
+            document.getElementById('gameover-overlay').style.display = 'none';
+        }
     }
 
-    // ── Profile management ────��───────────────────────
+    // ── Profile management ────────────────────────────
 
     _bindProfiles() {
         document.getElementById('btn-create-profile').addEventListener('click', () => this._createProfile());
@@ -62,6 +79,7 @@ class App {
         const profile = await this._api('/api/profiles/active');
         if (profile && profile.name && profile.name !== 'Guest') {
             document.getElementById('menu-player-name').textContent = profile.name;
+            await this._checkResume();
             this._showScreen('menu');
         } else {
             this._loadProfiles();
@@ -97,19 +115,28 @@ class App {
     async _selectProfile(id, name) {
         await this._api(`/api/profiles/${id}/select`, 'POST');
         document.getElementById('menu-player-name').textContent = name;
+        await this._checkResume();
         this._showScreen('menu');
     }
 
     async _selectGuest() {
         await this._api('/api/profiles/guest', 'POST');
         document.getElementById('menu-player-name').textContent = 'Guest';
+        document.getElementById('btn-resume').style.display = 'none';
         this._showScreen('menu');
+    }
+
+    async _checkResume() {
+        const data = await this._api('/api/game/has-save');
+        const btn = document.getElementById('btn-resume');
+        btn.style.display = (data && data.has_save) ? 'block' : 'none';
     }
 
     // ── Navigation ────────────────────────────────────
 
     _bindNavigation() {
         document.getElementById('btn-new-game').addEventListener('click', () => this._showScreen('setup'));
+        document.getElementById('btn-resume').addEventListener('click', () => this._resumeGame());
         document.getElementById('btn-setup-back').addEventListener('click', () => this._showScreen('menu'));
         document.getElementById('btn-history').addEventListener('click', () => this._showHistory());
         document.getElementById('btn-history-back').addEventListener('click', () => this._showScreen('menu'));
@@ -148,6 +175,18 @@ class App {
         if (data) {
             this.state = data;
             this.selectedCards.clear();
+            this._handRendered = false;
+            this._showScreen('game');
+            this._render();
+        }
+    }
+
+    async _resumeGame() {
+        const data = await this._api('/api/game/resume', 'POST');
+        if (data) {
+            this.state = data;
+            this.selectedCards.clear();
+            this._handRendered = true; // skip deal animation on resume
             this._showScreen('game');
             this._render();
         }
@@ -172,13 +211,24 @@ class App {
     async _drawFromPile() {
         if (!this.state || this.state.phase !== 'player_draw') return;
         const data = await this._api('/api/game/draw', 'POST');
-        if (data) { this.state = data; this.selectedCards.clear(); this._render(); }
+        if (data) {
+            this.state = data;
+            this.selectedCards.clear();
+            this._handRendered = true;
+            this._render();
+            this._checkRoundEnd();
+        }
     }
 
     async _pickupFromDiscard(cardIndex) {
         if (!this.state || this.state.phase !== 'player_draw') return;
         const data = await this._api('/api/game/pickup', 'POST', { card_index: cardIndex });
-        if (data) { this.state = data; this.selectedCards.clear(); this._render(); }
+        if (data) {
+            this.state = data;
+            this.selectedCards.clear();
+            this._handRendered = true;
+            this._render();
+        }
     }
 
     async _meld() {
@@ -189,7 +239,12 @@ class App {
         const data = await this._api('/api/game/meld', 'POST', {
             card_ids: [...this.selectedCards],
         });
-        if (data) { this.state = data; this.selectedCards.clear(); this._render(); this._checkRoundEnd(); }
+        if (data) {
+            this.state = data;
+            this.selectedCards.clear();
+            this._render();
+            this._checkRoundEnd();
+        }
     }
 
     async _layoff() {
@@ -197,28 +252,42 @@ class App {
             this._showStatus('Select exactly 1 card to lay off.', true);
             return;
         }
-        // Find which meld to lay off on — highlight melds for user to click
         this._showStatus('Click on a meld to lay off the selected card.');
         this._enableMeldSelection();
     }
 
     _enableMeldSelection() {
+        // Cancel any previous meld selection
+        this._disableMeldSelection();
+
+        const abort = new AbortController();
+        this._meldClickAbort = abort;
+
         document.querySelectorAll('.meld-group').forEach(group => {
             group.classList.add('highlight');
-            group.addEventListener('click', this._meldClickHandler = async () => {
+            group.addEventListener('click', async () => {
                 const meldIndex = parseInt(group.dataset.meldIndex);
                 const cardId = [...this.selectedCards][0];
                 const data = await this._api('/api/game/layoff', 'POST', {
                     card_id: cardId,
                     meld_index: meldIndex,
                 });
-                if (data) { this.state = data; this.selectedCards.clear(); this._render(); this._checkRoundEnd(); }
+                if (data) {
+                    this.state = data;
+                    this.selectedCards.clear();
+                    this._render();
+                    this._checkRoundEnd();
+                }
                 this._disableMeldSelection();
-            }, { once: true });
+            }, { signal: abort.signal });
         });
     }
 
     _disableMeldSelection() {
+        if (this._meldClickAbort) {
+            this._meldClickAbort.abort();
+            this._meldClickAbort = null;
+        }
         document.querySelectorAll('.meld-group').forEach(group => {
             group.classList.remove('highlight');
         });
@@ -234,8 +303,8 @@ class App {
         if (data) {
             this.state = data;
             this.selectedCards.clear();
+            this._handRendered = false; // animate new round deal
 
-            // Animate AI actions if present
             if (data.ai_actions && data.ai_actions.length > 0) {
                 await this._animateAITurn(data.ai_actions);
             }
@@ -256,7 +325,8 @@ class App {
             this._showStatus(hint.message);
             if (hint.cards) {
                 this.selectedCards = new Set(hint.cards);
-                this._renderHand();
+                this._updateHandSelection();
+                this._updateActions();
             }
         }
     }
@@ -269,7 +339,12 @@ class App {
     async _nextRound() {
         document.getElementById('round-overlay').style.display = 'none';
         const data = await this._api('/api/game/next-round', 'POST');
-        if (data) { this.state = data; this.selectedCards.clear(); this._render(); }
+        if (data) {
+            this.state = data;
+            this.selectedCards.clear();
+            this._handRendered = false;
+            this._render();
+        }
     }
 
     // ── Rendering ─────────────────────────────────────
@@ -288,22 +363,11 @@ class App {
         const drawPile = document.getElementById('draw-pile');
         drawPile.classList.toggle('glow', this.state.phase === 'player_draw');
 
-        // AI hand
         this._renderAIHand();
-
-        // Discard pile
         this._renderDiscardPile();
-
-        // Melds
         this._renderMelds();
-
-        // Player hand
         this._renderHand();
-
-        // Action buttons
         this._updateActions();
-
-        // Status
         this._updateStatus();
     }
 
@@ -317,10 +381,8 @@ class App {
 
     _renderDiscardPile() {
         const container = document.getElementById('discard-pile');
-        // Keep the label
         container.innerHTML = '<span class="pile-label">Discard</span>';
         const pile = this.state.discard_pile;
-        // Show last 8 cards max
         const visible = pile.slice(Math.max(0, pile.length - 8));
         const startIndex = Math.max(0, pile.length - 8);
         visible.forEach((card, i) => {
@@ -334,14 +396,12 @@ class App {
     }
 
     _renderMelds() {
-        // Player melds
         const playerMelds = document.getElementById('player-melds');
         playerMelds.innerHTML = '<span class="meld-label">Your Melds</span>';
         this.state.player.melds.forEach((meld, i) => {
             playerMelds.appendChild(createMeldGroup(meld, { meldIndex: i }));
         });
 
-        // AI melds
         const aiMelds = document.getElementById('ai-melds');
         aiMelds.innerHTML = '<span class="meld-label">AI Melds</span>';
         const offset = this.state.player.melds.length;
@@ -353,38 +413,52 @@ class App {
     _renderHand() {
         const container = document.getElementById('player-hand');
         container.innerHTML = '';
+        const animate = !this._handRendered;
+
         this.state.player.hand.forEach((card, i) => {
             const el = createCardEl(card);
-            el.classList.add('card-deal');
-            el.style.animationDelay = `${i * 0.03}s`;
+            // Only animate on initial deal, not on every re-render
+            if (animate) {
+                el.classList.add('card-deal');
+                el.style.animationDelay = `${i * 0.05}s`;
+            }
             if (this.selectedCards.has(card.id)) {
                 el.classList.add('selected');
             }
             el.addEventListener('click', () => this._toggleCard(card.id));
             container.appendChild(el);
         });
+
+        this._handRendered = true;
+    }
+
+    /** Update selection visuals without re-creating all card DOM elements. */
+    _updateHandSelection() {
+        const container = document.getElementById('player-hand');
+        container.querySelectorAll('.card').forEach(el => {
+            const id = el.dataset.cardId;
+            el.classList.toggle('selected', this.selectedCards.has(id));
+        });
     }
 
     _toggleCard(cardId) {
+        // Allow selection during meld/discard phase
         if (this.state.phase !== 'player_meld_or_discard') return;
+
         if (this.selectedCards.has(cardId)) {
             this.selectedCards.delete(cardId);
         } else {
             this.selectedCards.add(cardId);
         }
-        this._renderHand();
+        this._updateHandSelection();
         this._updateActions();
     }
 
     _updateActions() {
         const valid = this.state.valid_actions || [];
-        const meldBtn = document.getElementById('btn-meld');
-        const layoffBtn = document.getElementById('btn-layoff');
-        const discardBtn = document.getElementById('btn-discard');
-
-        meldBtn.disabled = !valid.includes('meld') || this.selectedCards.size < 3;
-        layoffBtn.disabled = !valid.includes('layoff') || this.selectedCards.size !== 1;
-        discardBtn.disabled = !valid.includes('discard') || this.selectedCards.size !== 1;
+        document.getElementById('btn-meld').disabled = !valid.includes('meld') || this.selectedCards.size < 3;
+        document.getElementById('btn-layoff').disabled = !valid.includes('layoff') || this.selectedCards.size !== 1;
+        document.getElementById('btn-discard').disabled = !valid.includes('discard') || this.selectedCards.size !== 1;
     }
 
     _updateStatus() {
@@ -397,8 +471,10 @@ class App {
         } else if (phase === 'player_meld_or_discard') {
             if (mustMeld) {
                 msg = 'You must meld the card you picked up before discarding.';
+            } else if (this.selectedCards.size === 0) {
+                msg = 'Select cards to meld, lay off, or discard.';
             } else {
-                msg = 'Meld cards, lay off, or select a card to discard.';
+                msg = `${this.selectedCards.size} card${this.selectedCards.size > 1 ? 's' : ''} selected.`;
             }
         } else if (phase === 'ai_turn') {
             msg = 'AI is thinking...';
@@ -427,14 +503,17 @@ class App {
         for (const action of actions) {
             await this._sleep(600);
             if (action.type === 'draw') {
-                this._showStatus(action.source === 'draw_pile' ? 'AI draws from pile.' : 'AI picks up from discard.');
+                this._showStatus(action.source === 'draw_pile'
+                    ? 'AI draws from pile.'
+                    : 'AI picks up from discard.');
             } else if (action.type === 'meld') {
                 this._showStatus('AI melds cards!');
             } else if (action.type === 'layoff') {
                 this._showStatus('AI lays off a card.');
             } else if (action.type === 'discard') {
-                const card = action.card;
-                if (card) this._showStatus(`AI discards ${card.rank}${card.suit ? card.suit[0].toUpperCase() : ''}.`);
+                if (action.card) {
+                    this._showStatus(`AI discards ${cardDisplayName(action.card)}.`);
+                }
             }
         }
         await this._sleep(400);
@@ -444,11 +523,10 @@ class App {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // ── Round / game end ────��─────────────────────────
+    // ── Round / game end ──────────────────────────────
 
     _checkRoundEnd() {
         if (!this.state) return;
-
         if (this.state.phase === 'round_end') {
             this._showRoundSummary();
         } else if (this.state.phase === 'game_over' || this.state.game_over) {
@@ -457,12 +535,14 @@ class App {
     }
 
     _showRoundSummary() {
+        // Ensure game-over overlay is hidden
+        document.getElementById('gameover-overlay').style.display = 'none';
+
         const history = this.state.round_history;
         if (!history || history.length === 0) return;
         const latest = history[history.length - 1];
 
-        const scoresEl = document.getElementById('round-scores');
-        scoresEl.innerHTML = `
+        document.getElementById('round-scores').innerHTML = `
             <div class="round-score-col you">
                 <h3>You</h3>
                 <div class="score-line"><span>Melds</span><span>+${latest.player.meld_points}</span></div>
@@ -485,17 +565,16 @@ class App {
         else if (wentOut === 'ai') title = 'AI went out!';
         else title = 'Draw pile exhausted';
         document.getElementById('round-title').textContent = title;
-
         document.getElementById('round-overlay').style.display = 'flex';
     }
 
     _showGameOver() {
-        const winner = this.state.winner;
-        const title = winner === 'player' ? 'You Win!' : 'AI Wins!';
-        document.getElementById('gameover-title').textContent = title;
+        document.getElementById('round-overlay').style.display = 'none';
 
-        const details = document.getElementById('gameover-details');
-        details.innerHTML = `
+        const winner = this.state.winner;
+        document.getElementById('gameover-title').textContent = winner === 'player' ? 'You Win!' : 'AI Wins!';
+
+        document.getElementById('gameover-details').innerHTML = `
             <p style="font-size:1.2rem;margin-bottom:1rem;">
                 Final Score: <strong style="color:var(--accent)">${this.state.player.total_score.toLocaleString()}</strong>
                 vs
@@ -504,7 +583,6 @@ class App {
             <p style="color:var(--text-dim)">Rounds played: ${this.state.round_number}</p>
         `;
 
-        document.getElementById('round-overlay').style.display = 'none';
         document.getElementById('gameover-overlay').style.display = 'flex';
     }
 

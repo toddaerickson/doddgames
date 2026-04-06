@@ -290,11 +290,22 @@ class AIPlayer:
 
         danger = 0
         # Check if player recently picked similar cards
+        # Card IDs are like "Ah", "10s", "joker_red" — parse rank and suit
         for pid in self.player_picked:
-            if pid.startswith(card.rank):
+            if pid.startswith('joker'):
+                continue
+            # Rank is everything except the last char; suit initial is last char
+            picked_rank = pid[:-1]
+            picked_suit_initial = pid[-1]
+            if picked_rank == card.rank:
                 danger += 3  # same rank — might complete a set
-            if len(pid) >= 2 and pid[-1] == card.suit[0]:
-                danger += 2  # same suit — might extend a run
+            if picked_suit_initial == card.suit[0]:
+                # Check if ranks are adjacent (potential run)
+                from game.deck import RANK_ORDER
+                if picked_rank in RANK_ORDER and card.rank in RANK_ORDER:
+                    gap = abs(RANK_ORDER[picked_rank] - RANK_ORDER[card.rank])
+                    if gap <= 2:
+                        danger += 2  # nearby same suit — might extend a run
 
         return danger
 

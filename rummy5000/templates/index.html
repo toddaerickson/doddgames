@@ -109,13 +109,13 @@
 
             <!-- Center: draw + discard piles -->
             <div class="table-center">
-                <div class="draw-pile" id="draw-pile">
+                <div class="draw-pile" id="draw-pile" role="button" aria-label="Draw pile">
                     <div class="card card-back" id="draw-pile-card">
                         <span class="pile-count" id="draw-count">54</span>
                     </div>
                     <span class="pile-label">Draw</span>
                 </div>
-                <div class="discard-pile" id="discard-pile">
+                <div class="discard-pile" id="discard-pile" aria-label="Discard pile">
                     <span class="pile-label">Discard</span>
                 </div>
             </div>
@@ -149,7 +149,7 @@
             </div>
 
             <!-- Status bar -->
-            <div class="status-bar" id="status-bar">
+            <div class="status-bar" id="status-bar" aria-live="polite">
                 Draw a card or pick up from the discard pile.
             </div>
         </div>

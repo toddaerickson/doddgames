@@ -11,6 +11,7 @@ export function createCardEl(card, options = {}) {
     el.dataset.cardId = card.id;
 
     if (card.is_joker) {
+        el.setAttribute('aria-label', 'Joker');
         const face = document.createElement('div');
         face.className = 'card-face joker';
         face.innerHTML = `
@@ -21,6 +22,7 @@ export function createCardEl(card, options = {}) {
         el.appendChild(face);
     } else {
         const sym = SUIT_SYMBOLS[card.suit] || '?';
+        el.setAttribute('aria-label', `${card.rank} of ${card.suit}`);
         const face = document.createElement('div');
         face.className = `card-face ${card.suit}`;
         face.innerHTML = `

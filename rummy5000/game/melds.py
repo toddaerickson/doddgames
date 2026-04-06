@@ -35,6 +35,30 @@ def is_valid_set(cards: list[Card]) -> bool:
     return True
 
 
+def _check_consecutive_run(indices: list[int], jokers_available: int, total_cards: int) -> bool:
+    """Check if sorted rank indices form a consecutive run with joker gap-filling.
+
+    Verifies that every position in the span is covered by either a natural
+    card or a joker, and that total cards exactly fills the span.
+    """
+    if not indices:
+        return False
+
+    min_idx = indices[0]
+    max_idx = indices[-1]
+    span = max_idx - min_idx + 1
+
+    # Total cards must exactly equal the span (no extras, no gaps)
+    if span != total_cards:
+        return False
+
+    # Count how many positions in the span are NOT covered by naturals
+    index_set = set(indices)
+    gaps = sum(1 for pos in range(min_idx, max_idx + 1) if pos not in index_set)
+
+    return gaps <= jokers_available and gaps == total_cards - len(indices)
+
+
 def is_valid_run(cards: list[Card]) -> bool:
     """Check if cards form a valid run (3+ consecutive, same suit, jokers fill gaps)."""
     if len(cards) < 3:
@@ -58,33 +82,19 @@ def is_valid_run(cards: list[Card]) -> bool:
     if len(indices) != len(set(indices)):
         return False
 
-    # Count gaps that jokers need to fill
     jokers_available = len(jokers)
-    min_idx = indices[0]
-    max_idx = indices[-1]
 
-    # The span must equal len(cards) - 1
-    span = max_idx - min_idx
-    if span + 1 > len(cards):
-        return False  # not enough cards (even with jokers) to fill the span
+    # Try ace-low interpretation (A=0): works naturally
+    if _check_consecutive_run(indices, jokers_available, len(cards)):
+        return True
 
-    # Check that naturals + jokers cover the full span
-    needed_jokers = (span + 1) - len(naturals)
-    if needed_jokers < 0 or needed_jokers > jokers_available:
-        return False
-
-    # Also handle ace-low runs: A-2-3 (indices 0,1,2) works naturally
-    # Ace-high: Q-K-A means indices 10,11,12,0 — need special handling
-    # Try ace-high interpretation if ace is present
-    if 0 in indices and max_idx >= 10:
-        # Try treating ace as index 13 (after K)
+    # Try ace-high interpretation (A=13) if ace is present
+    if 0 in indices:
         high_indices = sorted(13 if i == 0 else i for i in indices)
-        high_span = high_indices[-1] - high_indices[0]
-        high_needed = (high_span + 1) - len(naturals)
-        if 0 <= high_needed <= jokers_available and high_span + 1 <= len(cards):
+        if _check_consecutive_run(high_indices, jokers_available, len(cards)):
             return True
 
-    return needed_jokers >= 0
+    return False
 
 
 def is_valid_meld(cards: list[Card]) -> bool:
@@ -102,11 +112,18 @@ def find_all_possible_melds(hand: list[Card]) -> list[list[Card]]:
     """Find all valid meld combinations from a hand.
 
     Returns a list of possible melds (each meld is a list of cards).
-    Considers sets of 3-4 and runs of 3+.
+    Uses frozenset of card IDs for O(1) duplicate detection.
     """
     melds = []
+    seen: set[frozenset[str]] = set()
     jokers = [c for c in hand if c.is_joker]
     naturals = [c for c in hand if not c.is_joker]
+
+    def _add_meld(candidate: list[Card]):
+        key = frozenset(c.id for c in candidate)
+        if key not in seen and is_valid_meld(candidate):
+            seen.add(key)
+            melds.append(candidate)
 
     # Find sets: group by rank
     by_rank: dict[str, list[Card]] = {}
@@ -117,18 +134,17 @@ def find_all_possible_melds(hand: list[Card]) -> list[list[Card]]:
         # Sets of 3 or 4 naturals
         if len(cards) >= 3:
             for combo in combinations(cards, 3):
-                if is_valid_set(list(combo)):
-                    melds.append(list(combo))
-            if len(cards) >= 4:
-                if is_valid_set(cards[:4]):
-                    melds.append(cards[:4])
+                _add_meld(list(combo))
+            for combo in combinations(cards, 4):
+                _add_meld(list(combo))
 
         # Sets with jokers
         if len(cards) >= 2 and jokers:
             for combo in combinations(cards, 2):
-                candidate = list(combo) + [jokers[0]]
-                if is_valid_set(candidate):
-                    melds.append(candidate)
+                for nj in range(1, len(jokers) + 1):
+                    candidate = list(combo) + jokers[:nj]
+                    if len(candidate) <= 4:
+                        _add_meld(candidate)
 
     # Find runs: group by suit, try consecutive sequences
     by_suit: dict[str, list[Card]] = {}
@@ -139,35 +155,32 @@ def find_all_possible_melds(hand: list[Card]) -> list[list[Card]]:
         sorted_cards = sorted(cards, key=lambda c: c.rank_index)
         n = len(sorted_cards)
 
-        # Try all subsequences of length 3+
-        for length in range(3, n + 1 + len(jokers)):
-            for start in range(n):
-                end = min(start + length, n)
+        # Try all contiguous subsequences of the sorted cards + jokers
+        for start in range(n):
+            for end in range(start + 1, n + 1):
                 subset = sorted_cards[start:end]
-
-                # Try with 0..len(jokers) jokers added
+                # Try with 0..len(jokers) jokers
                 for num_jokers in range(len(jokers) + 1):
-                    if len(subset) + num_jokers < 3:
-                        continue
                     candidate = subset + jokers[:num_jokers]
-                    if is_valid_run(candidate) and candidate not in melds:
-                        melds.append(candidate)
+                    if len(candidate) >= 3:
+                        _add_meld(candidate)
 
-        # Check ace-high runs (e.g., Q-K-A)
+        # Ace-high runs (e.g., Q-K-A): ace is at index 0 in sorted order
+        # but needs to be tried at the high end
         aces = [c for c in sorted_cards if c.rank == 'A']
         high_cards = [c for c in sorted_cards if c.rank_index >= 10]  # J, Q, K
         if aces and high_cards:
             for ace in aces:
-                for length in range(2, len(high_cards) + 1):
+                for length in range(1, len(high_cards) + 1):
                     for combo in combinations(high_cards, length):
                         candidate = list(combo) + [ace]
-                        if is_valid_run(candidate) and candidate not in melds:
-                            melds.append(candidate)
+                        if len(candidate) >= 3:
+                            _add_meld(candidate)
                         # With jokers
                         for nj in range(1, len(jokers) + 1):
                             candidate_j = list(combo) + [ace] + jokers[:nj]
-                            if is_valid_run(candidate_j) and candidate_j not in melds:
-                                melds.append(candidate_j)
+                            if len(candidate_j) >= 3:
+                                _add_meld(candidate_j)
 
     return melds
 

@@ -31,15 +31,23 @@ class HistoryModel:
                     rounds_played: int, result: str,
                     saved_state: Optional[str] = None):
         with self._conn() as conn:
-            finished = "datetime('now')" if result != 'in_progress' else 'NULL'
-            conn.execute(
-                f"""UPDATE games SET player_score = ?, ai_score = ?,
-                    rounds_played = ?, result = ?, saved_state = ?,
-                    finished_at = {finished}
-                    WHERE id = ?""",
-                (player_score, ai_score, rounds_played, result,
-                 saved_state, game_id)
-            )
+            if result != 'in_progress':
+                conn.execute(
+                    """UPDATE games SET player_score = ?, ai_score = ?,
+                        rounds_played = ?, result = ?, saved_state = ?,
+                        finished_at = datetime('now')
+                        WHERE id = ?""",
+                    (player_score, ai_score, rounds_played, result,
+                     saved_state, game_id)
+                )
+            else:
+                conn.execute(
+                    """UPDATE games SET player_score = ?, ai_score = ?,
+                        rounds_played = ?, result = ?, saved_state = ?
+                        WHERE id = ?""",
+                    (player_score, ai_score, rounds_played, result,
+                     saved_state, game_id)
+                )
             conn.commit()
 
     def save_game_state(self, game_id: int, state_json: str):

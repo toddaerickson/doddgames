@@ -186,9 +186,11 @@ class GameEngine:
         card = cards[0]
         target_meld = all_melds[meld_index]
 
+        # Validate BEFORE mutating state
         if not can_lay_off(card, target_meld):
             raise GameError("Card cannot be laid off on this meld")
 
+        # Now safe to mutate
         self.player.hand.remove(card)
         target_meld.append(card)
 
@@ -245,6 +247,8 @@ class GameEngine:
     # ── AI actions (called by ai module) ───────────────
 
     def ai_draw_from_pile(self) -> Optional[Card]:
+        if self.phase not in (Phase.AI_TURN, Phase.PLAYER_DRAW):
+            return None
         card = self.deck.draw()
         if card is None:
             self._end_round('draw_exhausted')
@@ -253,6 +257,8 @@ class GameEngine:
         return card
 
     def ai_pickup_from_discard(self, card_index: int) -> list[Card]:
+        if self.phase not in (Phase.AI_TURN, Phase.PLAYER_DRAW):
+            return []
         if card_index < 0 or card_index >= len(self.discard_pile):
             return []
         picked_up = self.discard_pile[card_index:]
@@ -261,6 +267,8 @@ class GameEngine:
         return picked_up
 
     def ai_meld(self, cards: list[Card]) -> bool:
+        if self.phase in (Phase.ROUND_END, Phase.GAME_OVER):
+            return False
         if not is_valid_meld(cards):
             return False
         for card in cards:
@@ -270,6 +278,8 @@ class GameEngine:
         return True
 
     def ai_layoff(self, card: Card, meld_index: int) -> bool:
+        if self.phase in (Phase.ROUND_END, Phase.GAME_OVER):
+            return False
         all_melds = self.player.melds + self.ai.melds
         if meld_index < 0 or meld_index >= len(all_melds):
             return False
@@ -281,6 +291,8 @@ class GameEngine:
         return True
 
     def ai_discard(self, card: Card):
+        if self.phase in (Phase.ROUND_END, Phase.GAME_OVER):
+            return
         if card in self.ai.hand:
             self.ai.hand.remove(card)
         self.discard_pile.append(card)

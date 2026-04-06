@@ -213,7 +213,7 @@ html, body {
     padding: 8px 16px;
     min-height: 80px;
 }
-.ai-hand { display: flex; gap: -10px; }
+.ai-hand { display: flex; }
 .ai-melds { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .meld-label { font-size: 0.75rem; color: var(--text-dim); margin-right: 8px; }
 
@@ -240,8 +240,8 @@ html, body {
     pointer-events: none;
 }
 .discard-pile { display: flex; gap: 2px; align-items: flex-end; flex-wrap: nowrap; overflow-x: auto; max-width: 60vw; }
-.discard-pile .card { cursor: pointer; flex-shrink: 0; }
-.discard-pile .card:hover { transform: translateY(-4px); }
+.discard-pile .card { cursor: pointer; flex-shrink: 0; transition: transform 0.15s, box-shadow 0.15s; }
+.discard-pile .card:hover { transform: translateY(-6px); box-shadow: 0 4px 12px rgba(88,166,255,0.4); }
 
 .draw-pile .card { cursor: pointer; }
 .draw-pile .card:hover { box-shadow: 0 0 12px rgba(88,166,255,0.4); }
@@ -347,7 +347,16 @@ html, body {
     background: rgba(0,0,0,0.2);
 }
 .meld-group .card { cursor: default; }
-.meld-group.highlight { border-color: var(--accent); box-shadow: 0 0 8px rgba(88,166,255,0.3); }
+.meld-group.highlight {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(88,166,255,0.3);
+    animation: meldPulse 1.2s ease-in-out infinite;
+    cursor: pointer;
+}
+@keyframes meldPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(88,166,255,0.2); }
+    50%      { box-shadow: 0 0 16px rgba(88,166,255,0.6); }
+}
 
 /* ── History Screen ────────────────────────── */
 
@@ -413,4 +422,28 @@ html, body {
     .action-bar { flex-wrap: wrap; justify-content: center; }
     .table-center { gap: 1rem; }
     .game-title { font-size: 2rem; }
+    .player-hand { gap: 2px; }
+    .player-hand-area { padding: 4px 8px; }
+}
+
+@media (max-width: 480px) {
+    .card { width: 44px; height: 62px; }
+    .card .card-rank { font-size: 0.6rem; }
+    .card .card-suit-small { font-size: 0.5rem; }
+    .card .card-center-suit { font-size: 1.1rem; }
+    .card .card-corner { top: 2px; left: 3px; }
+    .card .card-corner-br { bottom: 2px; right: 3px; }
+    .meld-group .card { width: 36px; height: 52px; }
+    .ai-hand .card { width: 30px; height: 42px; margin-left: -16px; }
+    .discard-pile { max-width: 80vw; }
+    .discard-pile .card { margin-left: -24px; }
+    .score-banner { gap: 0.5rem; font-size: 0.8rem; }
+    .score-value { font-size: 0.9rem; }
+    .action-bar .btn { padding: 6px 10px; font-size: 0.8rem; }
+    .btn-action { padding: 8px 14px; font-size: 0.85rem; }
+    .status-bar { font-size: 0.8rem; }
+    .game-table { border-width: 4px; }
+    .player-hand { gap: 1px; }
+    .table-center { padding: 8px; min-height: 80px; }
+    .ai-area { padding: 4px 8px; min-height: 50px; gap: 1rem; }
 }

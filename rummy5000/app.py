@@ -5,11 +5,15 @@ game actions, profiles, and history.
 """
 
 import os
+import time
+import uuid
+import json
 import sqlite3
 from flask import Flask, jsonify, request, session, render_template
 
 from game.engine import GameEngine, GameError, Phase
 from game.ai import AIPlayer
+from game.deck import Card
 from models.profile import ProfileModel
 from models.history import HistoryModel
 
@@ -35,23 +39,40 @@ init_db()
 profiles = ProfileModel(DB_PATH)
 history = HistoryModel(DB_PATH)
 
-# In-memory game state per session (keyed by session ID)
-# In production this would use a proper cache; fine for single-server use.
+# In-memory game state per session (keyed by session ID).
+# Entries have a 'last_active' timestamp for cleanup.
+MAX_SESSIONS = 100
+SESSION_TTL = 3600  # 1 hour
 active_games: dict[str, dict] = {}
 
 
 def _session_id() -> str:
     if 'sid' not in session:
-        import uuid
         session['sid'] = str(uuid.uuid4())
     return session['sid']
 
 
-def _get_game() -> tuple[GameEngine, AIPlayer]:
+def _get_game() -> tuple[GameEngine | None, AIPlayer | None]:
     sid = _session_id()
-    if sid not in active_games:
+    entry = active_games.get(sid)
+    if not entry:
         return None, None
-    return active_games[sid]['engine'], active_games[sid]['ai']
+    entry['last_active'] = time.time()
+    return entry['engine'], entry['ai']
+
+
+def _cleanup_sessions():
+    """Remove expired sessions to prevent memory leak."""
+    now = time.time()
+    expired = [sid for sid, entry in active_games.items()
+               if now - entry.get('last_active', 0) > SESSION_TTL]
+    for sid in expired:
+        del active_games[sid]
+    # Also enforce max sessions (evict oldest)
+    if len(active_games) > MAX_SESSIONS:
+        by_age = sorted(active_games.items(), key=lambda x: x[1].get('last_active', 0))
+        for sid, _ in by_age[:len(active_games) - MAX_SESSIONS]:
+            del active_games[sid]
 
 
 def _game_response(engine: GameEngine, ai_actions: list = None) -> dict:
@@ -82,6 +103,8 @@ def create_profile():
     name = data.get('name', '').strip() if data else ''
     if not name:
         return jsonify({'error': 'Name is required'}), 400
+    if len(name) < 2 or len(name) > 20:
+        return jsonify({'error': 'Name must be 2-20 characters'}), 400
     try:
         profile = profiles.create(name)
         return jsonify(profile), 201
@@ -117,6 +140,8 @@ def active_profile():
 
 @app.route('/api/game/new', methods=['POST'])
 def new_game():
+    _cleanup_sessions()
+
     data = request.get_json() or {}
     difficulty = data.get('difficulty', 'medium')
     target_score = data.get('target_score', 5000)
@@ -138,6 +163,7 @@ def new_game():
         'engine': engine,
         'ai': ai,
         'db_id': game_db_id,
+        'last_active': time.time(),
     }
 
     return jsonify(_game_response(engine))
@@ -157,9 +183,13 @@ def draw_card():
     if not engine:
         return jsonify({'error': 'No active game'}), 404
     try:
-        card = engine.player_draw_from_pile()
+        engine.player_draw_from_pile()
         return jsonify(_game_response(engine))
     except GameError as e:
+        # If draw pile exhausted, return the round-end state
+        if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
+            _save_round_data()
+            return jsonify(_game_response(engine))
         return jsonify({'error': str(e)}), 400
 
 
@@ -171,8 +201,8 @@ def pickup_discard():
 
     data = request.get_json() or {}
     card_index = data.get('card_index')
-    if card_index is None:
-        return jsonify({'error': 'card_index is required'}), 400
+    if card_index is None or not isinstance(card_index, int):
+        return jsonify({'error': 'card_index (integer) is required'}), 400
 
     try:
         engine.player_pickup_from_discard(card_index)
@@ -195,9 +225,8 @@ def meld_cards():
     try:
         engine.player_meld(card_ids)
         resp = _game_response(engine)
-        # If round ended after meld, save round
         if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
-            _save_round_data(engine)
+            _save_round_data()
         return jsonify(resp)
     except GameError as e:
         return jsonify({'error': str(e)}), 400
@@ -219,7 +248,7 @@ def layoff_card():
         engine.player_layoff(card_id, meld_index)
         resp = _game_response(engine)
         if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
-            _save_round_data(engine)
+            _save_round_data()
         return jsonify(resp)
     except GameError as e:
         return jsonify({'error': str(e)}), 400
@@ -241,7 +270,7 @@ def discard_card():
 
         # If round ended, save and return
         if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
-            _save_round_data(engine)
+            _save_round_data()
             return jsonify(_game_response(engine))
 
         # AI turn
@@ -249,9 +278,8 @@ def discard_card():
         if engine.phase == Phase.AI_TURN:
             ai_actions = ai.take_turn(engine)
 
-            # If round ended after AI turn, save
             if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
-                _save_round_data(engine)
+                _save_round_data()
 
         return jsonify(_game_response(engine, ai_actions))
     except GameError as e:
@@ -302,12 +330,50 @@ def save_game():
         return jsonify({'error': 'No active game'}), 404
 
     sid = _session_id()
-    db_id = active_games[sid]['db_id']
+    entry = active_games.get(sid)
+    if not entry:
+        return jsonify({'error': 'No active game'}), 404
+
+    db_id = entry['db_id']
     state_json = engine.to_json()
     history.save_game_state(db_id, state_json)
     history.update_game(db_id, engine.player.total_score, engine.ai.total_score,
                         engine.round_number, 'in_progress', state_json)
     return jsonify({'saved': True})
+
+
+@app.route('/api/game/resume', methods=['POST'])
+def resume_game():
+    """Resume a previously saved game."""
+    profile_id = session.get('profile_id')
+    saved = history.get_saved_game(profile_id)
+    if not saved or not saved.get('saved_state'):
+        return jsonify({'error': 'No saved game found'}), 404
+
+    try:
+        state = json.loads(saved['saved_state'])
+        engine = _restore_engine(state)
+        ai = AIPlayer(difficulty=engine.difficulty)
+
+        sid = _session_id()
+        active_games[sid] = {
+            'engine': engine,
+            'ai': ai,
+            'db_id': saved['id'],
+            'last_active': time.time(),
+        }
+        return jsonify(_game_response(engine))
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        return jsonify({'error': 'Saved game is corrupted'}), 400
+
+
+@app.route('/api/game/has-save', methods=['GET'])
+def has_saved_game():
+    """Check if a saved game exists for the active profile."""
+    profile_id = session.get('profile_id')
+    saved = history.get_saved_game(profile_id)
+    has_save = saved is not None and saved.get('saved_state') is not None
+    return jsonify({'has_save': has_save})
 
 
 # ── History & Stats endpoints ──────────────────────────
@@ -337,13 +403,15 @@ def get_stats():
 
 # ── Helpers ────────────────────────────────────────────
 
-def _save_round_data(engine: GameEngine):
+def _save_round_data():
     """Save the latest round to the database."""
     sid = _session_id()
-    if sid not in active_games:
+    entry = active_games.get(sid)
+    if not entry:
         return
 
-    db_id = active_games[sid]['db_id']
+    engine = entry['engine']
+    db_id = entry['db_id']
     if engine.round_history:
         latest = engine.round_history[-1]
         history.save_round(db_id, latest)
@@ -356,6 +424,45 @@ def _save_round_data(engine: GameEngine):
         db_id, engine.player.total_score, engine.ai.total_score,
         engine.round_number, result
     )
+
+
+def _restore_engine(state: dict) -> GameEngine:
+    """Reconstruct a GameEngine from saved JSON state."""
+    engine = GameEngine(
+        difficulty=state['difficulty'],
+        target_score=state['target_score']
+    )
+    engine.round_number = state['round_number']
+    engine.phase = Phase(state['phase'])
+    engine.round_history = state.get('round_history', [])
+    engine._game_over = state.get('game_over', False)
+
+    # Restore cards
+    def _card_from_dict(d):
+        return Card(rank=d['rank'], suit=d['suit'], is_joker=d.get('is_joker', False))
+
+    engine.player.hand = [_card_from_dict(c) for c in state['player']['hand']]
+    engine.player.melds = [[_card_from_dict(c) for c in m] for m in state['player']['melds']]
+    engine.player.total_score = state['player']['total_score']
+    engine.player.round_score = state['player']['round_score']
+
+    engine.ai.hand = [_card_from_dict(c) for c in state['ai']['hand']]
+    engine.ai.melds = [[_card_from_dict(c) for c in m] for m in state['ai']['melds']]
+    engine.ai.total_score = state['ai']['total_score']
+    engine.ai.round_score = state['ai']['round_score']
+
+    engine.discard_pile = [_card_from_dict(c) for c in state['discard_pile']]
+    engine.deck.cards = [_card_from_dict(c) for c in state.get('deck_cards', [])]
+
+    drawn_id = state.get('_drawn_from_discard')
+    if drawn_id:
+        engine._drawn_from_discard = next((c for c in engine.player.hand if c.id == drawn_id), None)
+
+    meld_id = state.get('_must_meld_card')
+    if meld_id:
+        engine._must_meld_card = next((c for c in engine.player.hand if c.id == meld_id), None)
+
+    return engine
 
 
 if __name__ == '__main__':
