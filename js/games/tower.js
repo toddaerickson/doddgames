@@ -74,20 +74,20 @@ export class TowerGame {
            depths typical of clinical TOL administrations. */
         this.PUZZLES = [
             // 2-move puzzles — minimal planning demand; serves as practice/warm-up
-            { start: [[2,1,0],[],[]], goal: [[2,0],[1],[]], optimal: 2 },
-            { start: [[2,1,0],[],[]], goal: [[2,1],[],[0]], optimal: 2 },
+            { start: [[2,1,0],[],[]], goal: [[2],[0,1],[]], optimal: 2 },
+            { start: [[2,1,0],[],[]], goal: [[2],[1],[0]], optimal: 2 },
             // 3-move puzzles — moderate planning; requires 1 subgoal
-            { start: [[2,1,0],[],[]], goal: [[2],[1],[0]], optimal: 3 },
-            { start: [[2,1,0],[],[]], goal: [[0],[2,1],[]], optimal: 3 },
-            { start: [[2,1,0],[],[]], goal: [[],[2,0],[1]], optimal: 3 },
+            { start: [[2,1,0],[],[]], goal: [[2,0],[1],[]], optimal: 3 },
+            { start: [[2,1,0],[],[]], goal: [[2,0],[],[1]], optimal: 3 },
+            { start: [[2,1,0],[],[]], goal: [[2],[1,0],[]], optimal: 3 },
             // 4-move puzzles — requires multi-step lookahead and subgoal management
-            { start: [[2,1,0],[],[]], goal: [[1],[2,0],[]], optimal: 4 },
-            { start: [[2,1,0],[],[]], goal: [[],[2],[1,0]], optimal: 4 },
-            { start: [[2,1,0],[],[]], goal: [[0],[2],[1]], optimal: 4 },
+            { start: [[2,1,0],[],[]], goal: [[1],[0,2],[]], optimal: 4 },
+            { start: [[2,1,0],[],[]], goal: [[0],[1,2],[]], optimal: 4 },
+            { start: [[2,1,0],[],[]], goal: [[],[1,0],[2]], optimal: 4 },
             // 5-move puzzles — highest planning demand; counter-intuitive intermediate states
-            { start: [[2,1,0],[],[]], goal: [[],[1,0],[2]], optimal: 5 },
-            { start: [[2,1,0],[],[]], goal: [[1],[0],[2]], optimal: 5 },
-            { start: [[2,1,0],[],[]], goal: [[],[0],[2,1]], optimal: 5 },
+            { start: [[2,1,0],[],[]], goal: [[1,0],[],[2]], optimal: 5 },
+            { start: [[2,1,0],[],[]], goal: [[0,2],[1],[]], optimal: 5 },
+            { start: [[2,1,0],[],[]], goal: [[0],[1],[2]], optimal: 5 },
         ];
 
         // --- Mutable game state ---
