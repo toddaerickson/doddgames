@@ -89,6 +89,9 @@ export class ScoreManager {
         } else if (game === 'cpt') {
             const accs = entries.map(e => e.data && e.data.accuracy).filter(a => a != null);
             return accs.length > 0 ? Math.max(...accs) : null;
+        } else if (game === 'digit-span') {
+            const spans = entries.map(e => e.data && e.data.maxSpan).filter(s => s != null);
+            return spans.length > 0 ? Math.max(...spans) : null;
         }
         return null;
     }
@@ -126,6 +129,8 @@ export class ScoreManager {
                 return entry.data.totalRecalled;
             case 'cpt':
                 return entry.data.accuracy;
+            case 'digit-span':
+                return entry.data.maxSpan;
             default:
                 return null;
         }
@@ -308,6 +313,7 @@ export class ScoreManager {
             { key: 'symbol-digit', unit: '', label: 'Best Round', format: v => '' + v },
             { key: 'word-list', unit: '', label: 'Best Total', format: v => '' + v },
             { key: 'cpt', unit: '%', label: 'Best Accuracy', format: v => v + '%' },
+            { key: 'digit-span', unit: '', label: 'Best Span', format: v => '' + v },
         ];
 
         ALL_GAMES.forEach(g => {
@@ -348,6 +354,7 @@ export class ScoreManager {
             { key: 'symbol-digit', name: 'Symbol Digit', metric: 'Avg Best Round', unit: '', color: '#3498db', format: v => Math.round(v) + '' },
             { key: 'word-list', name: 'Word List', metric: 'Avg Total Recalled', unit: '', color: '#e91e63', format: v => Math.round(v) + '' },
             { key: 'cpt', name: 'CPT', metric: 'Avg Accuracy', unit: '%', color: '#ff9800', format: v => Math.round(v) + '%' },
+            { key: 'digit-span', name: 'Digit Span', metric: 'Avg Max Span', unit: '', color: '#e040fb', format: v => v.toFixed(1) },
         ];
 
         games.forEach(g => {
@@ -427,7 +434,8 @@ export class ScoreManager {
             schulte: 'Schulte', tetris: 'Tetris', stroop: 'Stroop',
             'trails-a': 'Trails A', gonogo: 'Go/No-Go',
             'trails-b': 'Trails B', 'card-sort': 'Card Sort', tower: 'Tower',
-            'symbol-digit': 'Symbol Digit', 'word-list': 'Word List', cpt: 'CPT'
+            'symbol-digit': 'Symbol Digit', 'word-list': 'Word List', cpt: 'CPT',
+            'digit-span': 'Digit Span'
         };
 
         history.forEach(entry => {

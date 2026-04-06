@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rummy 5000</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/cards.css">
+</head>
+<body>
+    <!-- ═══════════ PROFILE SELECT ═══════════ -->
+    <div id="screen-profile" class="screen active">
+        <div class="profile-screen">
+            <h1 class="game-title">Rummy 5000</h1>
+            <div class="profile-box">
+                <h2>Choose Player</h2>
+                <div id="profile-list" class="profile-list"></div>
+                <div class="profile-create">
+                    <input type="text" id="profile-name-input" placeholder="New player name..." maxlength="20" autocomplete="off">
+                    <button id="btn-create-profile" class="btn btn-small">Create</button>
+                </div>
+                <button id="btn-guest" class="btn btn-secondary btn-full">Play as Guest</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ MAIN MENU ═══════════ -->
+    <div id="screen-menu" class="screen">
+        <div class="menu-screen">
+            <h1 class="game-title">Rummy 5000</h1>
+            <p class="welcome-text">Welcome, <span id="menu-player-name">Guest</span></p>
+            <div class="menu-buttons">
+                <button id="btn-new-game" class="btn btn-primary btn-full">New Game</button>
+                <button id="btn-resume" class="btn btn-full" style="display:none">Resume Game</button>
+                <button id="btn-history" class="btn btn-full">Score History</button>
+                <button id="btn-stats" class="btn btn-full">Statistics</button>
+                <button id="btn-rules" class="btn btn-full">How to Play</button>
+                <button id="btn-switch-profile" class="btn btn-secondary btn-full">Switch Player</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ GAME SETUP ═══════════ -->
+    <div id="screen-setup" class="screen">
+        <div class="setup-screen">
+            <h2>Game Setup</h2>
+            <div class="setup-group">
+                <label>AI Difficulty</label>
+                <div class="difficulty-options">
+                    <button class="diff-btn" data-diff="easy">
+                        <span class="diff-name">Easy</span>
+                        <span class="diff-desc">Learning the ropes. AI plays simply and predictably.</span>
+                    </button>
+                    <button class="diff-btn selected" data-diff="medium">
+                        <span class="diff-name">Medium</span>
+                        <span class="diff-desc">A worthy opponent. AI plays smart but beatable.</span>
+                    </button>
+                    <button class="diff-btn" data-diff="hard">
+                        <span class="diff-name">Hard</span>
+                        <span class="diff-desc">Card shark. AI counts cards and plays optimally.</span>
+                    </button>
+                </div>
+            </div>
+            <div class="setup-group">
+                <label>Target Score</label>
+                <div class="target-options">
+                    <button class="target-btn" data-target="2500">2,500<span>Quick</span></button>
+                    <button class="target-btn selected" data-target="5000">5,000<span>Standard</span></button>
+                    <button class="target-btn" data-target="10000">10,000<span>Marathon</span></button>
+                </div>
+            </div>
+            <div class="setup-actions">
+                <button id="btn-start-game" class="btn btn-primary">Start Game</button>
+                <button id="btn-setup-back" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ GAME TABLE ═══════════ -->
+    <div id="screen-game" class="screen">
+        <div class="game-table">
+            <!-- Score banner -->
+            <div class="score-banner">
+                <div class="score-item">
+                    <span class="score-label">Round</span>
+                    <span class="score-value" id="round-num">1</span>
+                </div>
+                <div class="score-item you">
+                    <span class="score-label">You</span>
+                    <span class="score-value" id="player-score">0</span>
+                </div>
+                <div class="score-item ai">
+                    <span class="score-label">AI</span>
+                    <span class="score-value" id="ai-score">0</span>
+                </div>
+                <div class="score-item target">
+                    <span class="score-label">Target</span>
+                    <span class="score-value" id="target-score">5000</span>
+                </div>
+            </div>
+
+            <!-- AI area -->
+            <div class="ai-area">
+                <div class="ai-hand" id="ai-hand"></div>
+                <div class="ai-melds" id="ai-melds">
+                    <span class="meld-label">AI Melds</span>
+                </div>
+            </div>
+
+            <!-- Center: draw + discard piles -->
+            <div class="table-center">
+                <div class="draw-pile" id="draw-pile" role="button" aria-label="Draw pile">
+                    <div class="card card-back" id="draw-pile-card">
+                        <span class="pile-count" id="draw-count">54</span>
+                    </div>
+                    <span class="pile-label">Draw</span>
+                </div>
+                <div class="discard-pile" id="discard-pile" aria-label="Discard pile">
+                    <span class="pile-label">Discard</span>
+                </div>
+            </div>
+
+            <!-- Player melds -->
+            <div class="player-melds" id="player-melds">
+                <span class="meld-label">Your Melds</span>
+            </div>
+
+            <!-- Player hand -->
+            <div class="player-hand-area">
+                <div class="player-hand" id="player-hand"></div>
+            </div>
+
+            <!-- Action bar -->
+            <div class="action-bar">
+                <div class="action-left">
+                    <button class="btn btn-small" id="btn-sort-rank">Sort: Rank</button>
+                    <button class="btn btn-small" id="btn-sort-suit">Sort: Suit</button>
+                </div>
+                <div class="action-center">
+                    <button class="btn btn-action" id="btn-meld" disabled>Meld</button>
+                    <button class="btn btn-action" id="btn-layoff" disabled>Lay Off</button>
+                    <button class="btn btn-action btn-discard" id="btn-discard" disabled>Discard</button>
+                </div>
+                <div class="action-right">
+                    <button class="btn btn-small" id="btn-hint">Hint</button>
+                    <button class="btn btn-small" id="btn-save">Save</button>
+                    <button class="btn btn-small" id="btn-quit">Quit</button>
+                </div>
+            </div>
+
+            <!-- Status bar -->
+            <div class="status-bar" id="status-bar" aria-live="polite">
+                Draw a card or pick up from the discard pile.
+            </div>
+        </div>
+
+        <!-- Round summary overlay -->
+        <div class="overlay" id="round-overlay" style="display:none">
+            <div class="overlay-content round-summary">
+                <h2 id="round-title">Round Complete</h2>
+                <div class="round-scores" id="round-scores"></div>
+                <button class="btn btn-primary" id="btn-next-round">Next Round</button>
+            </div>
+        </div>
+
+        <!-- Game over overlay -->
+        <div class="overlay" id="gameover-overlay" style="display:none">
+            <div class="overlay-content game-over">
+                <h2 id="gameover-title">Game Over</h2>
+                <div id="gameover-details"></div>
+                <div class="gameover-actions">
+                    <button class="btn btn-primary" id="btn-play-again">Play Again</button>
+                    <button class="btn btn-secondary" id="btn-gameover-menu">Main Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ HISTORY ═══════════ -->
+    <div id="screen-history" class="screen">
+        <div class="history-screen">
+            <div class="history-header">
+                <h2>Score History</h2>
+                <button id="btn-history-back" class="btn btn-small">Back</button>
+            </div>
+            <div id="history-list" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════ STATS ═══════════ -->
+    <div id="screen-stats" class="screen">
+        <div class="stats-screen">
+            <div class="stats-header">
+                <h2>Statistics</h2>
+                <button id="btn-stats-back" class="btn btn-small">Back</button>
+            </div>
+            <div id="stats-content" class="stats-content"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════ RULES ═══════════ -->
+    <div id="screen-rules" class="screen">
+        <div class="rules-screen">
+            <div class="rules-header">
+                <h2>How to Play</h2>
+                <button id="btn-rules-back" class="btn btn-small">Back</button>
+            </div>
+            <div class="rules-content">
+                <h3>Objective</h3>
+                <p>Be the first to reach the target score (default 5,000) across multiple rounds.</p>
+
+                <h3>Card Values</h3>
+                <table class="rules-table">
+                    <tr><td>Joker</td><td>50 points</td></tr>
+                    <tr><td>Ace (high)</td><td>15 points</td></tr>
+                    <tr><td>Ace (low, in A-2-3)</td><td>5 points</td></tr>
+                    <tr><td>K, Q, J</td><td>10 points</td></tr>
+                    <tr><td>2 &ndash; 10</td><td>Face value</td></tr>
+                </table>
+
+                <h3>Each Turn</h3>
+                <ol>
+                    <li><strong>Draw</strong> &mdash; Take the top card from the draw pile, OR pick up a card from the discard pile (you must take all cards above it and immediately meld the chosen card).</li>
+                    <li><strong>Meld</strong> (optional) &mdash; Lay down sets (3&ndash;4 of same rank) or runs (3+ consecutive same suit). You can also lay off cards onto any existing meld.</li>
+                    <li><strong>Discard</strong> &mdash; Place one card on the discard pile to end your turn.</li>
+                </ol>
+
+                <h3>Jokers</h3>
+                <p>Jokers are wild and can substitute for any card in a meld.</p>
+
+                <h3>Scoring</h3>
+                <p>At round end: add melded card values, subtract unmelded hand cards. The round ends when someone goes out (empties their hand) or the draw pile is exhausted.</p>
+
+                <h3>Winning</h3>
+                <p>First player to reach the target score wins. If both cross the target in the same round, the higher score wins.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
