@@ -228,16 +228,17 @@ html, body {
 .table-center {
     display: flex;
     justify-content: flex-start;
-    align-items: center;
+    align-items: flex-end;
     gap: 1.5rem;
-    padding: 16px 16px 40px 16px;
+    padding: 16px;
     flex: 1;
+    position: relative;
 }
 
 /* Draw pile — single card with box-shadow stack effect */
 .draw-pile {
     flex-shrink: 0;
-    text-align: center;
+    position: relative;
 }
 .draw-pile-card {
     cursor: pointer;
@@ -262,24 +263,30 @@ html, body {
         0 0 16px rgba(88,166,255,0.5);
 }
 .pile-count {
-    display: block;
-    margin-top: 4px;
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 0.8rem;
     font-weight: 700;
     color: rgba(255,255,255,0.7);
+    white-space: nowrap;
 }
 .pile-label {
-    display: block;
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 0.7rem;
     color: rgba(255,255,255,0.5);
+    white-space: nowrap;
 }
 
 /* Discard pile — horizontal row of cards */
 .discard-pile {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     flex-wrap: nowrap;
-    overflow-x: auto;
     flex: 1;
     min-width: 0;
 }
