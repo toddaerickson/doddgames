@@ -4,4 +4,4 @@ provider = "python"
 
 [deploy]
 rootDirectory = "rummy5000"
-startCommand = "gunicorn app:app --bind 0.0.0.0:$PORT"
+startCommand = "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1"
