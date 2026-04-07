@@ -440,7 +440,6 @@ class App {
 
         this.state.player.hand.forEach((card, i) => {
             const el = createCardEl(card);
-            // Only animate on initial deal, not on every re-render
             if (animate) {
                 el.classList.add('card-deal');
                 el.style.animationDelay = `${i * 0.05}s`;
@@ -449,6 +448,38 @@ class App {
                 el.classList.add('selected');
             }
             el.addEventListener('click', () => this._toggleCard(card.id));
+
+            // Drag-to-reorder
+            el.draggable = true;
+            el.dataset.handIndex = i;
+            el.addEventListener('dragstart', (e) => {
+                this._dragIndex = i;
+                el.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            el.addEventListener('dragend', () => {
+                el.classList.remove('dragging');
+                this._dragIndex = null;
+                container.querySelectorAll('.card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
+            });
+            el.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (this._dragIndex === null || this._dragIndex === i) return;
+                container.querySelectorAll('.card').forEach(c => c.classList.remove('drag-over-left', 'drag-over-right'));
+                el.classList.add(this._dragIndex < i ? 'drag-over-right' : 'drag-over-left');
+            });
+            el.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (this._dragIndex === null || this._dragIndex === i) return;
+                const hand = this.state.player.hand;
+                const [moved] = hand.splice(this._dragIndex, 1);
+                hand.splice(i, 0, moved);
+                this._dragIndex = null;
+                this._renderHand();
+                this._updateActions();
+            });
+
             container.appendChild(el);
         });
 

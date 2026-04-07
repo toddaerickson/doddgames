@@ -230,54 +230,48 @@ html, body {
     justify-content: flex-start;
     align-items: center;
     gap: 1.5rem;
-    padding: 12px 12px 12px 16px;
+    padding: 16px 16px 40px 16px;
     flex: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
 }
 
-/* Draw pile — stacked face-down cards */
+/* Draw pile — single card with box-shadow stack effect */
 .draw-pile {
     flex-shrink: 0;
-    position: relative;
+    text-align: center;
 }
-.draw-pile-stack {
-    position: relative;
-    width: calc(var(--card-w) + 6px);
-    height: var(--card-h);
+.draw-pile-card {
     cursor: pointer;
+    box-shadow:
+        2px 2px 0 0 #283593,
+        4px 4px 0 0 #1a237e,
+        6px 6px 0 0 #0d1257,
+        0 1px 4px rgba(0,0,0,0.4);
 }
-.draw-pile-stack .card {
-    position: absolute;
-    top: 0;
-    left: 0;
+.draw-pile-card:hover {
+    box-shadow:
+        2px 2px 0 0 #283593,
+        4px 4px 0 0 #1a237e,
+        6px 6px 0 0 #0d1257,
+        0 0 12px rgba(88,166,255,0.4);
 }
-.draw-pile-stack .card:nth-child(1) { top: 4px; left: 3px; }
-.draw-pile-stack .card:nth-child(2) { top: 2px; left: 1.5px; }
-.draw-pile-stack .card:nth-child(3) { top: 0; left: 0; }
-.draw-pile-stack:hover .card:nth-child(3) {
-    box-shadow: 0 0 12px rgba(88,166,255,0.4);
+.draw-pile.glow .draw-pile-card {
+    box-shadow:
+        2px 2px 0 0 #283593,
+        4px 4px 0 0 #1a237e,
+        6px 6px 0 0 #0d1257,
+        0 0 16px rgba(88,166,255,0.5);
 }
-.draw-pile.glow .draw-pile-stack .card:nth-child(3) { box-shadow: 0 0 16px rgba(88,166,255,0.5); }
-.draw-pile .pile-count {
-    position: absolute;
-    bottom: -18px;
-    left: 50%;
-    transform: translateX(-50%);
+.pile-count {
+    display: block;
+    margin-top: 4px;
     font-size: 0.8rem;
     font-weight: 700;
     color: rgba(255,255,255,0.7);
-    pointer-events: none;
-    white-space: nowrap;
 }
-.draw-pile .pile-label {
-    position: absolute;
-    bottom: -32px;
-    left: 50%;
-    transform: translateX(-50%);
+.pile-label {
+    display: block;
     font-size: 0.7rem;
     color: rgba(255,255,255,0.5);
-    white-space: nowrap;
 }
 
 /* Discard pile — horizontal row of cards */
@@ -287,7 +281,7 @@ html, body {
     flex-wrap: nowrap;
     overflow-x: auto;
     flex: 1;
-    position: relative;
+    min-width: 0;
 }
 .discard-pile > .pile-label {
     display: none;
@@ -322,6 +316,9 @@ html, body {
     box-shadow: 0 0 12px rgba(88,166,255,0.6);
     border-color: var(--accent);
 }
+.player-hand .card.dragging { opacity: 0.3; }
+.player-hand .card.drag-over-left { border-left: 3px solid var(--accent); }
+.player-hand .card.drag-over-right { border-right: 3px solid var(--accent); }
 
 /* Action bar */
 .action-bar {
