@@ -239,13 +239,39 @@ html, body {
     color: rgba(255,255,255,0.7);
     pointer-events: none;
 }
+
+/* Draw pile — stacked face-down cards */
+.draw-pile-stack {
+    position: relative;
+    width: 60px;
+    height: 84px;
+    cursor: pointer;
+    margin: 0 auto 4px;
+}
+.draw-pile-stack .card {
+    position: absolute;
+}
+.draw-pile-stack .card:nth-child(1) { top: 4px; left: 3px; }
+.draw-pile-stack .card:nth-child(2) { top: 2px; left: 1.5px; }
+.draw-pile-stack .card:nth-child(3) { top: 0; left: 0; }
+.draw-pile-stack:hover .card:nth-child(3) {
+    box-shadow: 0 0 12px rgba(88,166,255,0.4);
+}
+.draw-pile .pile-count {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    display: block;
+    text-align: center;
+    margin-top: 4px;
+}
 .discard-pile { display: flex; gap: 2px; align-items: flex-end; flex-wrap: nowrap; overflow-x: auto; max-width: 60vw; }
 .discard-pile .card { cursor: pointer; flex-shrink: 0; transition: transform 0.15s, box-shadow 0.15s; }
 .discard-pile .card:hover { transform: translateY(-6px); box-shadow: 0 4px 12px rgba(88,166,255,0.4); }
 
-.draw-pile .card { cursor: pointer; }
-.draw-pile .card:hover { box-shadow: 0 0 12px rgba(88,166,255,0.4); }
-.draw-pile.glow .card { box-shadow: 0 0 16px rgba(88,166,255,0.5); }
+.draw-pile .draw-pile-stack { cursor: pointer; }
+.draw-pile.glow .draw-pile-stack .card:nth-child(3) { box-shadow: 0 0 16px rgba(88,166,255,0.5); }
 
 /* Player melds */
 .player-melds {
@@ -414,7 +440,73 @@ html, body {
 .rules-table td:first-child { color: var(--text); font-weight: 600; }
 .rules-table td:last-child { color: var(--text-dim); text-align: right; }
 
+/* ── Zoom controls ────────────────────────── */
+
+.zoom-controls {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 50;
+    display: flex;
+    gap: 4px;
+}
+.zoom-controls button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--btn-bg);
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.zoom-controls button:hover { background: var(--btn-hover); border-color: var(--accent); }
+
 /* ── Responsive ────────────────────────────── */
+
+/* Large screens — bigger cards */
+@media (min-width: 1200px) {
+    .card { width: 80px; height: 112px; }
+    .card-rank { font-size: 1rem !important; }
+    .card-suit-small { font-size: 0.85rem !important; }
+    .card-center-suit { font-size: 2.2rem !important; }
+    .card-corner { top: 4px; left: 6px; }
+    .card-corner-br { bottom: 4px; right: 6px; }
+    .meld-group .card { width: 64px; height: 90px; }
+    .meld-group .card-rank { font-size: 0.85rem !important; }
+    .meld-group .card-suit-small { font-size: 0.7rem !important; }
+    .meld-group .card-center-suit { font-size: 1.6rem !important; }
+    .ai-hand .card { width: 52px; height: 72px; margin-left: -26px; }
+    .draw-pile-stack { width: 80px; height: 112px; }
+    .score-value { font-size: 1.4rem; }
+    .score-label { font-size: 0.8rem; }
+    .status-bar { font-size: 1rem; }
+    .btn-action { padding: 12px 28px; font-size: 1.1rem; }
+    .pile-label { font-size: 0.8rem; }
+    .pile-count { font-size: 0.95rem; }
+}
+
+@media (min-width: 1600px) {
+    .card { width: 100px; height: 140px; }
+    .card-rank { font-size: 1.2rem !important; }
+    .card-suit-small { font-size: 1rem !important; }
+    .card-center-suit { font-size: 2.8rem !important; }
+    .card-corner { top: 5px; left: 8px; }
+    .card-corner-br { bottom: 5px; right: 8px; }
+    .meld-group .card { width: 76px; height: 106px; }
+    .meld-group .card-rank { font-size: 1rem !important; }
+    .meld-group .card-suit-small { font-size: 0.85rem !important; }
+    .meld-group .card-center-suit { font-size: 2rem !important; }
+    .ai-hand .card { width: 64px; height: 90px; margin-left: -32px; }
+    .draw-pile-stack { width: 100px; height: 140px; }
+    .score-value { font-size: 1.6rem; }
+    .status-bar { font-size: 1.1rem; }
+    .btn-action { padding: 14px 32px; font-size: 1.2rem; }
+}
 
 @media (max-width: 768px) {
     .score-banner { gap: 1rem; padding: 6px 8px; }

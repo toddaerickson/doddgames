@@ -79,6 +79,13 @@
     <!-- ═══════════ GAME TABLE ═══════════ -->
     <div id="screen-game" class="screen">
         <div class="game-table">
+            <!-- Zoom controls -->
+            <div class="zoom-controls">
+                <button id="btn-zoom-out" title="Zoom out">-</button>
+                <button id="btn-zoom-reset" title="Reset zoom">1x</button>
+                <button id="btn-zoom-in" title="Zoom in">+</button>
+            </div>
+
             <!-- Score banner -->
             <div class="score-banner">
                 <div class="score-item">
@@ -110,9 +117,12 @@
             <!-- Center: draw + discard piles -->
             <div class="table-center">
                 <div class="draw-pile" id="draw-pile" role="button" aria-label="Draw pile">
-                    <div class="card card-back" id="draw-pile-card">
-                        <span class="pile-count" id="draw-count">54</span>
+                    <div class="draw-pile-stack" id="draw-pile-card">
+                        <div class="card"><div class="card-back"></div></div>
+                        <div class="card"><div class="card-back"></div></div>
+                        <div class="card"><div class="card-back"></div></div>
                     </div>
+                    <span class="pile-count" id="draw-count">54</span>
                     <span class="pile-label">Draw</span>
                 </div>
                 <div class="discard-pile" id="discard-pile" aria-label="Discard pile">

@@ -24,10 +24,13 @@ class App {
         this._meldClickAbort = null; // AbortController for meld selection listeners
         this._handRendered = false;  // track if initial deal animation done
 
+        this._zoomLevel = 1.0;
+
         this._bindNavigation();
         this._bindSetup();
         this._bindGameActions();
         this._bindProfiles();
+        this._bindZoom();
 
         this._checkActiveProfile();
     }
@@ -145,6 +148,22 @@ class App {
         document.getElementById('btn-rules').addEventListener('click', () => this._showScreen('rules'));
         document.getElementById('btn-rules-back').addEventListener('click', () => this._showScreen('menu'));
         document.getElementById('btn-quit').addEventListener('click', () => this._showScreen('menu'));
+    }
+
+    // ── Zoom ─────────────────────────────────────────
+
+    _bindZoom() {
+        document.getElementById('btn-zoom-in').addEventListener('click', () => this._setZoom(this._zoomLevel + 0.1));
+        document.getElementById('btn-zoom-out').addEventListener('click', () => this._setZoom(this._zoomLevel - 0.1));
+        document.getElementById('btn-zoom-reset').addEventListener('click', () => this._setZoom(1.0));
+    }
+
+    _setZoom(level) {
+        this._zoomLevel = Math.max(0.6, Math.min(1.6, level));
+        const table = document.querySelector('.game-table');
+        table.style.transform = `scale(${this._zoomLevel})`;
+        table.style.transformOrigin = 'center center';
+        document.getElementById('btn-zoom-reset').textContent = `${Math.round(this._zoomLevel * 100)}%`;
     }
 
     // ── Game setup ────────────────────────────────────
