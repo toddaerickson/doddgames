@@ -229,7 +229,7 @@ html, body {
     display: flex;
     justify-content: flex-start;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
     padding: 12px 12px 12px 24px;
     flex: 1;
     min-height: 120px;
@@ -247,8 +247,8 @@ html, body {
 }
 .draw-pile-stack {
     position: relative;
-    width: var(--card-w);
-    height: var(--card-h);
+    width: calc(var(--card-w) + 6px);
+    height: calc(var(--card-h) + 6px);
     cursor: pointer;
 }
 .draw-pile-stack .card {
