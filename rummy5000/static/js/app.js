@@ -153,17 +153,21 @@ class App {
     // ── Zoom ─────────────────────────────────────────
 
     _bindZoom() {
-        document.getElementById('btn-zoom-in').addEventListener('click', () => this._setZoom(this._zoomLevel + 0.1));
-        document.getElementById('btn-zoom-out').addEventListener('click', () => this._setZoom(this._zoomLevel - 0.1));
+        document.getElementById('btn-zoom-in').addEventListener('click', () => this._setZoom(this._zoomLevel + 0.15));
+        document.getElementById('btn-zoom-out').addEventListener('click', () => this._setZoom(this._zoomLevel - 0.15));
         document.getElementById('btn-zoom-reset').addEventListener('click', () => this._setZoom(1.0));
     }
 
     _setZoom(level) {
-        this._zoomLevel = Math.max(0.6, Math.min(1.6, level));
-        const table = document.querySelector('.game-table');
-        table.style.transform = `scale(${this._zoomLevel})`;
-        table.style.transformOrigin = 'center center';
-        document.getElementById('btn-zoom-reset').textContent = `${Math.round(this._zoomLevel * 100)}%`;
+        this._zoomLevel = Math.max(0.5, Math.min(2.0, level));
+        const root = document.documentElement;
+        const base = { w: 60, h: 84, rank: 0.75, suitSm: 0.65, center: 1.6 };
+        root.style.setProperty('--card-w', `${base.w * this._zoomLevel}px`);
+        root.style.setProperty('--card-h', `${base.h * this._zoomLevel}px`);
+        root.style.setProperty('--card-rank-size', `${base.rank * this._zoomLevel}rem`);
+        root.style.setProperty('--card-suit-sm-size', `${base.suitSm * this._zoomLevel}rem`);
+        root.style.setProperty('--card-center-size', `${base.center * this._zoomLevel}rem`);
+        document.querySelector('.zoom-label').textContent = `${Math.round(this._zoomLevel * 100)}%`;
     }
 
     // ── Game setup ────────────────────────────────────
