@@ -227,12 +227,13 @@ html, body {
 /* Table center */
 .table-center {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
-    gap: 2rem;
-    padding: 12px;
+    gap: 1rem;
+    padding: 12px 12px 12px 24px;
     flex: 1;
     min-height: 120px;
+    overflow: hidden;
 }
 .draw-pile, .discard-pile { text-align: center; position: relative; }
 .pile-label { display: block; font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 4px; }
@@ -242,6 +243,7 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex-shrink: 0;
 }
 .draw-pile-stack {
     position: relative;
@@ -266,23 +268,22 @@ html, body {
     pointer-events: none;
 }
 
-/* Discard pile — horizontal, aligned with draw pile */
+/* Discard pile — horizontal, fills remaining space */
 .discard-pile {
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
     overflow-x: auto;
-    max-width: 60vw;
+    flex: 1;
     min-height: var(--card-h);
 }
 .discard-pile .pile-label {
     position: absolute;
     bottom: -18px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
     white-space: nowrap;
 }
-.discard-pile .card { cursor: pointer; flex-shrink: 0; margin-left: -30px; transition: transform 0.15s, box-shadow 0.15s; }
+.discard-pile .card { cursor: pointer; flex-shrink: 0; margin-left: -20px; transition: transform 0.15s, box-shadow 0.15s; }
 .discard-pile .card:first-child { margin-left: 0; }
 .discard-pile .card:hover { transform: translateY(-6px); box-shadow: 0 4px 12px rgba(88,166,255,0.4); }
 
@@ -499,7 +500,6 @@ html, body {
 }
 
 @media (max-width: 480px) {
-    .discard-pile { max-width: 80vw; }
     .discard-pile .card { margin-left: -24px; }
     .score-banner { gap: 0.5rem; font-size: 0.8rem; }
     .score-value { font-size: 0.9rem; }
