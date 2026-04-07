@@ -1,6 +1,4 @@
 [build]
-rootDirectory = "rummy5000"
-dockerfilePath = "rummy5000/Dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-rootDirectory = "rummy5000"
