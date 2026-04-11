@@ -304,6 +304,7 @@ class ReversiApp {
         this.gameActive = true;
         this.aiThinking = false;
 
+        this._hideHintBar();
         this._showScreen('game');
         this._render();
 
@@ -313,12 +314,20 @@ class ReversiApp {
         }
     }
 
+    _hideHintBar() {
+        const hintBar = document.getElementById('hint-bar');
+        if (hintBar) hintBar.style.display = 'none';
+        clearTimeout(this._hintTimeout);
+    }
+
     _handleCellClick(r, c) {
         if (!this.gameActive || this.aiThinking) return;
         if (this.currentTurn !== this.playerColor) return;
 
         const flips = getFlips(this.board, r, c, this.playerColor);
         if (flips.length === 0) return;
+
+        this._hideHintBar();
 
         // Save state for undo
         this.history.push({
@@ -458,8 +467,92 @@ class ReversiApp {
         const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
         if (cell) {
             cell.classList.add('hint-cell');
-            setTimeout(() => cell.classList.remove('hint-cell'), 1500);
+            setTimeout(() => cell.classList.remove('hint-cell'), 4000);
         }
+
+        // Show explanation
+        const explanation = this._explainMove(r, c);
+        const hintBar = document.getElementById('hint-bar');
+        hintBar.innerHTML = explanation;
+        hintBar.style.display = 'block';
+        // Auto-hide after 8 seconds
+        clearTimeout(this._hintTimeout);
+        this._hintTimeout = setTimeout(() => { hintBar.style.display = 'none'; }, 8000);
+    }
+
+    /** Analyze a move and return an HTML explanation of why it's good. */
+    _explainMove(r, c) {
+        const flips = getFlips(this.board, r, c, this.playerColor);
+        const colLabels = 'ABCDEFGH';
+        const pos = `${colLabels[c]}${r + 1}`;
+
+        const reasons = [];
+
+        // Corner
+        const corners = [[0,0],[0,7],[7,0],[7,7]];
+        if (corners.some(([cr,cc]) => cr === r && cc === c)) {
+            reasons.push('This is a <strong>corner</strong> — the most powerful square. Corners can never be flipped.');
+        }
+
+        // Edge (not corner)
+        const isEdge = (r === 0 || r === 7 || c === 0 || c === 7);
+        if (isEdge && reasons.length === 0) {
+            reasons.push('This is an <strong>edge square</strong> — edge discs are hard to flip and help you control a whole side.');
+        }
+
+        // Adjacent to corner (C-square or X-square) — warn if no corner taken
+        const xSquares = [[1,1],[1,6],[6,1],[6,6]];
+        const isXSquare = xSquares.some(([xr,xc]) => xr === r && xc === c);
+        if (isXSquare) {
+            // Check if the adjacent corner is already taken by player
+            const adjCorner = corners.find(([cr,cc]) => Math.abs(cr-r) <= 1 && Math.abs(cc-c) <= 1);
+            if (adjCorner && this.board[adjCorner[0]][adjCorner[1]] === this.playerColor) {
+                reasons.push('Normally an X-square (diagonal to corner) is risky, but you already own the adjacent corner.');
+            }
+        }
+
+        // Flip count
+        if (flips.length >= 5) {
+            reasons.push(`Flips <strong>${flips.length} discs</strong> — a big swing that shifts the board in your favor.`);
+        } else if (flips.length >= 3) {
+            reasons.push(`Flips <strong>${flips.length} discs</strong> in this move.`);
+        }
+
+        // Mobility analysis: does this move give us more future moves?
+        const [newBoard] = applyMove(this.board, r, c, this.playerColor);
+        const oppMovesBefore = getValidMoves(this.board, opponent(this.playerColor)).length;
+        const oppMovesAfter = getValidMoves(newBoard, opponent(this.playerColor)).length;
+        const myMovesAfter = getValidMoves(newBoard, this.playerColor).length;
+
+        if (oppMovesAfter < oppMovesBefore && oppMovesBefore - oppMovesAfter >= 2) {
+            reasons.push(`Reduces the opponent's options from ${oppMovesBefore} to <strong>${oppMovesAfter} moves</strong> — limiting their choices is key.`);
+        }
+
+        if (myMovesAfter > getValidMoves(this.board, this.playerColor).length) {
+            reasons.push('Increases your own mobility — more available moves means more flexibility.');
+        }
+
+        // Stable disc detection: if placing on an edge next to own discs
+        if (isEdge && !corners.some(([cr,cc]) => cr === r && cc === c)) {
+            // Check if adjacent to own disc along the edge
+            const edgeNeighbors = [];
+            for (const [dr, dc] of DIRS) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && this.board[nr][nc] === this.playerColor) {
+                    if (nr === r || nc === c) edgeNeighbors.push([nr, nc]);
+                }
+            }
+            if (edgeNeighbors.length > 0 && reasons.length < 2) {
+                reasons.push('Extends your edge presence — connected edge discs are very stable.');
+            }
+        }
+
+        // Fallback
+        if (reasons.length === 0) {
+            reasons.push(`Flips ${flips.length} disc${flips.length !== 1 ? 's' : ''} — the AI evaluates this as the strongest positional choice.`);
+        }
+
+        return `<strong>${pos}:</strong> ${reasons.join(' ')}`;
     }
 
     _undo() {
