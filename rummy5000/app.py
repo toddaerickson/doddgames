@@ -1,7 +1,7 @@
-"""Flask application for Rummy 5000.
+"""Flask Blueprint for Rummy 5000.
 
-Serves the SPA frontend and provides REST API endpoints for
-game actions, profiles, and history.
+Provides REST API endpoints for game actions, profiles, and history.
+Designed to be mounted at /rummy5000 by the unified server.
 """
 
 import os
@@ -9,18 +9,13 @@ import time
 import uuid
 import json
 import sqlite3
-from flask import Flask, jsonify, request, session, render_template
+from flask import Blueprint, Flask, jsonify, request, session, render_template
 
-from game.engine import GameEngine, GameError, Phase
-from game.ai import AIPlayer
-from game.deck import Card
-from models.profile import ProfileModel
-from models.history import HistoryModel
-
-app = Flask(__name__,
-            static_folder='static',
-            template_folder='templates')
-app.secret_key = os.environ.get('SECRET_KEY', 'rummy5000-dev-key-change-in-production')
+from .game.engine import GameEngine, GameError, Phase
+from .game.ai import AIPlayer
+from .game.deck import Card
+from .models.profile import ProfileModel
+from .models.history import HistoryModel
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'db', 'rummy5000.db')
 
@@ -33,8 +28,6 @@ def init_db():
     with open(schema_path) as f:
         conn.executescript(f.read())
     conn.close()
-
-init_db()
 
 profiles = ProfileModel(DB_PATH)
 history = HistoryModel(DB_PATH)
@@ -83,21 +76,29 @@ def _game_response(engine: GameEngine, ai_actions: list = None) -> dict:
     return resp
 
 
+# ── Blueprint ─────────────────────────────────────────
+
+rummy_bp = Blueprint('rummy', __name__,
+                     static_folder='static',
+                     template_folder='templates',
+                     static_url_path='/static')
+
+
 # ── Frontend ───────────────────────────────────────────
 
-@app.route('/')
+@rummy_bp.route('/')
 def index():
     return render_template('index.html')
 
 
 # ── Profile endpoints ──────────────────────────────────
 
-@app.route('/api/profiles', methods=['GET'])
+@rummy_bp.route('/api/profiles', methods=['GET'])
 def list_profiles():
     return jsonify(profiles.list_all())
 
 
-@app.route('/api/profiles', methods=['POST'])
+@rummy_bp.route('/api/profiles', methods=['POST'])
 def create_profile():
     data = request.get_json()
     name = data.get('name', '').strip() if data else ''
@@ -112,7 +113,7 @@ def create_profile():
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/api/profiles/<int:pid>/select', methods=['POST'])
+@rummy_bp.route('/api/profiles/<int:pid>/select', methods=['POST'])
 def select_profile(pid):
     profile = profiles.get(pid)
     if not profile:
@@ -122,14 +123,14 @@ def select_profile(pid):
     return jsonify(profile)
 
 
-@app.route('/api/profiles/guest', methods=['POST'])
+@rummy_bp.route('/api/profiles/guest', methods=['POST'])
 def guest_profile():
     session.pop('profile_id', None)
     session['profile_name'] = 'Guest'
     return jsonify({'name': 'Guest', 'id': None})
 
 
-@app.route('/api/profiles/active', methods=['GET'])
+@rummy_bp.route('/api/profiles/active', methods=['GET'])
 def active_profile():
     pid = session.get('profile_id')
     name = session.get('profile_name', 'Guest')
@@ -138,7 +139,7 @@ def active_profile():
 
 # ── Game endpoints ─────────────────────────────────────
 
-@app.route('/api/game/new', methods=['POST'])
+@rummy_bp.route('/api/game/new', methods=['POST'])
 def new_game():
     _cleanup_sessions()
 
@@ -169,7 +170,7 @@ def new_game():
     return jsonify(_game_response(engine))
 
 
-@app.route('/api/game/state', methods=['GET'])
+@rummy_bp.route('/api/game/state', methods=['GET'])
 def game_state():
     engine, _ = _get_game()
     if not engine:
@@ -177,7 +178,7 @@ def game_state():
     return jsonify(_game_response(engine))
 
 
-@app.route('/api/game/draw', methods=['POST'])
+@rummy_bp.route('/api/game/draw', methods=['POST'])
 def draw_card():
     engine, _ = _get_game()
     if not engine:
@@ -193,7 +194,7 @@ def draw_card():
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/api/game/pickup', methods=['POST'])
+@rummy_bp.route('/api/game/pickup', methods=['POST'])
 def pickup_discard():
     engine, _ = _get_game()
     if not engine:
@@ -211,7 +212,7 @@ def pickup_discard():
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/api/game/meld', methods=['POST'])
+@rummy_bp.route('/api/game/meld', methods=['POST'])
 def meld_cards():
     engine, _ = _get_game()
     if not engine:
@@ -232,7 +233,7 @@ def meld_cards():
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/api/game/layoff', methods=['POST'])
+@rummy_bp.route('/api/game/layoff', methods=['POST'])
 def layoff_card():
     engine, _ = _get_game()
     if not engine:
@@ -254,7 +255,7 @@ def layoff_card():
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/api/game/discard', methods=['POST'])
+@rummy_bp.route('/api/game/discard', methods=['POST'])
 def discard_card():
     engine, ai = _get_game()
     if not engine:
@@ -286,7 +287,7 @@ def discard_card():
         return jsonify({'error': str(e)}), 400
 
 
-@app.route('/api/game/sort', methods=['POST'])
+@rummy_bp.route('/api/game/sort', methods=['POST'])
 def sort_hand():
     engine, _ = _get_game()
     if not engine:
@@ -298,7 +299,7 @@ def sort_hand():
     return jsonify(_game_response(engine))
 
 
-@app.route('/api/game/hint', methods=['GET'])
+@rummy_bp.route('/api/game/hint', methods=['GET'])
 def get_hint():
     engine, _ = _get_game()
     if not engine:
@@ -306,7 +307,7 @@ def get_hint():
     return jsonify(engine.get_hint())
 
 
-@app.route('/api/game/next-round', methods=['POST'])
+@rummy_bp.route('/api/game/next-round', methods=['POST'])
 def next_round():
     engine, ai = _get_game()
     if not engine:
@@ -323,7 +324,7 @@ def next_round():
     return jsonify(_game_response(engine))
 
 
-@app.route('/api/game/save', methods=['POST'])
+@rummy_bp.route('/api/game/save', methods=['POST'])
 def save_game():
     engine, _ = _get_game()
     if not engine:
@@ -342,7 +343,7 @@ def save_game():
     return jsonify({'saved': True})
 
 
-@app.route('/api/game/resume', methods=['POST'])
+@rummy_bp.route('/api/game/resume', methods=['POST'])
 def resume_game():
     """Resume a previously saved game."""
     profile_id = session.get('profile_id')
@@ -367,7 +368,7 @@ def resume_game():
         return jsonify({'error': 'Saved game is corrupted'}), 400
 
 
-@app.route('/api/game/has-save', methods=['GET'])
+@rummy_bp.route('/api/game/has-save', methods=['GET'])
 def has_saved_game():
     """Check if a saved game exists for the active profile."""
     profile_id = session.get('profile_id')
@@ -378,7 +379,7 @@ def has_saved_game():
 
 # ── History & Stats endpoints ──────────────────────────
 
-@app.route('/api/history', methods=['GET'])
+@rummy_bp.route('/api/history', methods=['GET'])
 def get_history():
     pid = session.get('profile_id')
     if not pid:
@@ -388,12 +389,12 @@ def get_history():
     return jsonify(history.get_history(pid, limit, offset))
 
 
-@app.route('/api/history/<int:game_id>/rounds', methods=['GET'])
+@rummy_bp.route('/api/history/<int:game_id>/rounds', methods=['GET'])
 def get_game_rounds(game_id):
     return jsonify(history.get_game_rounds(game_id))
 
 
-@app.route('/api/stats', methods=['GET'])
+@rummy_bp.route('/api/stats', methods=['GET'])
 def get_stats():
     pid = session.get('profile_id')
     if not pid:
@@ -463,8 +464,3 @@ def _restore_engine(state: dict) -> GameEngine:
         engine._must_meld_card = next((c for c in engine.player.hand if c.id == meld_id), None)
 
     return engine
-
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)

@@ -15,9 +15,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-from game.deck import Card, Deck
-from game.melds import is_valid_meld, can_lay_off, find_all_possible_melds, find_layoff_options
-from game.scoring import calculate_round_score, score_meld
+from .deck import Card, Deck
+from .melds import is_valid_meld, can_lay_off, find_all_possible_melds, find_layoff_options
+from .scoring import calculate_round_score, score_meld
 
 
 class Phase(str, Enum):

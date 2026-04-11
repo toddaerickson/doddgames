@@ -4,6 +4,17 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+.back-to-doddgames {
+    display: inline-block;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+.back-to-doddgames:hover { opacity: 1; text-decoration: underline; }
+
 :root {
     --table-green: #0a5c2a;
     --table-dark: #073d1c;

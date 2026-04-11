@@ -6,12 +6,12 @@ Hard   — card counting, optimal meld timing, strategic go-out decisions.
 """
 
 import random
-from game.deck import Card, RANK_ORDER
-from game.melds import (
+from .deck import Card, RANK_ORDER
+from .melds import (
     is_valid_meld, find_all_possible_melds, find_layoff_options,
     can_lay_off
 )
-from game.scoring import score_meld, card_points
+from .scoring import score_meld, card_points
 
 
 class AIPlayer:

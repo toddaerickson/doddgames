@@ -43,7 +43,7 @@ class App {
             opts.headers['Content-Type'] = 'application/json';
             opts.body = JSON.stringify(body);
         }
-        const res = await fetch(url, opts);
+        const res = await fetch('/rummy5000' + url, opts);
         const data = await res.json();
         if (!res.ok) {
             this._showStatus(data.error || 'An error occurred', true);
