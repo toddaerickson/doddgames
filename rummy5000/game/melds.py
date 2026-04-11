@@ -5,7 +5,7 @@ joker substitution, and lay-offs onto existing melds.
 """
 
 from itertools import combinations
-from game.deck import Card, RANK_ORDER, RANKS, SUITS
+from .deck import Card, RANK_ORDER, RANKS, SUITS
 
 
 def is_valid_set(cards: list[Card]) -> bool:

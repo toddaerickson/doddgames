@@ -1,57 +1,66 @@
-/* ══════════════════════════════════════════════════════════
-   SCORE MANAGER — structured localStorage persistence
-   ══════════════════════════════════════════════════════════
+/* ==============================================================
+   SCORE MANAGER — server-side persistence via /api/scores
+   ==============================================================
 
-   All session data is stored in localStorage under the key
-   'doddgames_history' as a JSON array of entry objects.
-   Each entry has the shape: { game, data, displayText, date }
-     - game:        string identifier for the game (e.g. 'schulte', 'stroop')
-     - data:        raw metric object saved by the game (shape varies per game)
-     - displayText: human-readable summary string shown in the history list
-     - date:        ISO 8601 timestamp of when the session was saved
+   All session data is stored on the server in SQLite.
+   Each entry has the shape: { game_key, data, display_text, played_at }
 
-   The array is capped at 200 entries (oldest are dropped). Entries
-   are always stored newest-first so index 0 is the most recent session.
+   The local cache (_history) is loaded from the server on init and
+   refreshed after each score save. The cache is capped at 200 entries.
+
+   Entries are always stored newest-first so index 0 is the most recent.
 */
 export class ScoreManager {
-    constructor(historyKey = 'doddgames_history') {
-        // localStorage key used for all read/write operations.
-        // When multi-user is active this will be 'doddgames_history_<userId>'.
-        this.HISTORY_KEY = historyKey;
+    constructor() {
+        // Local cache — populated by loadFromServer()
+        this._history = [];
+        this._loaded = false;
     }
 
-    // Returns the full history array from localStorage, or [] on parse failure.
+    /** Load all scores from server for the active user. */
+    async loadFromServer() {
+        try {
+            const res = await fetch('/api/scores');
+            const data = await res.json();
+            // Normalise server format to match the old localStorage format
+            this._history = data.map(entry => ({
+                game: entry.game_key,
+                data: entry.data,
+                displayText: entry.display_text || '',
+                date: entry.played_at,
+            }));
+            this._loaded = true;
+        } catch {
+            this._history = [];
+            this._loaded = true;
+        }
+    }
+
     getHistory() {
-        try { return JSON.parse(localStorage.getItem(this.HISTORY_KEY)) || []; }
-        catch { return []; }
+        return this._history;
     }
 
-    // Prepends a new entry to the history and enforces the 200-entry cap.
-    saveScore(game, data, displayText) {
-        const history = this.getHistory();
-        history.unshift({ game, data, displayText, date: new Date().toISOString() });
-        if (history.length > 200) history.length = 200;
-        localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
+    async saveScore(game, data, displayText) {
+        // Save to server
+        await fetch('/api/scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game, data, displayText }),
+        });
+        // Refresh local cache
+        await this.loadFromServer();
     }
 
-    // Wipes all stored sessions and re-renders the UI to reflect the empty state.
-    clearHistory() {
-        localStorage.removeItem(this.HISTORY_KEY);
+    async clearHistory() {
+        await fetch('/api/scores/clear', { method: 'POST' });
+        this._history = [];
         this.renderAll();
     }
 
-    // Returns every history entry whose game field matches the given key.
     getGameHistory(game) {
-        return this.getHistory().filter(e => e.game === game);
+        return this._history.filter(e => e.game === game);
     }
 
-    // Returns the single best-ever metric value for a game across all stored sessions.
-    // "Best" is game-type-specific:
-    //   - Time-based games (schulte, trails-a, trails-b): lowest time, capped at <999s
-    //   - Score-based games (tetris, symbol-digit): highest score
-    //   - Accuracy-based games (stroop, gonogo, cpt): highest accuracy percentage
-    //   - Categorical outcomes (card-sort, tower, word-list): highest count
-    // Returns null when no valid sessions exist for the game.
     getBest(game) {
         const entries = this.getGameHistory(game);
         if (entries.length === 0) return null;
@@ -96,17 +105,6 @@ export class ScoreManager {
         return null;
     }
 
-    // Canonical metric extractor: pulls the single most meaningful numeric value
-    // from a history entry's data object for a given game.
-    //
-    // This is the authoritative source of truth for which data field represents
-    // "performance" for each game. It is consumed by:
-    //   - getSparklineData()  → sparkline rendering on game cards and analytics cards
-    //   - getRollingAverage() → analytics card averages (last 5 / last 20 sessions)
-    //   - ProfileManager      → within-user z-score computation
-    //
-    // Time-based games exclude sentinel values >= 999s (indicates an aborted run).
-    // Returns null when the entry lacks data or the game key is unrecognised.
     _extractMetric(game, entry) {
         if (!entry.data) return null;
         switch (game) {
@@ -136,9 +134,6 @@ export class ScoreManager {
         }
     }
 
-    // Averages the extracted metric over the n most-recent sessions for a game.
-    // Sessions with null metrics (e.g. aborted runs) are excluded from both the
-    // numerator and denominator.
     getRollingAverage(game, n) {
         const entries = this.getGameHistory(game).slice(0, n);
         if (entries.length === 0) return null;
@@ -147,24 +142,11 @@ export class ScoreManager {
         return values.reduce((a, b) => a + b, 0) / values.length;
     }
 
-    // Returns up to n metric values in chronological order (oldest first) for use
-    // as sparkline input. History is stored newest-first, so the slice is reversed.
-    // Null/missing metrics are replaced with 0 to keep the sparkline continuous.
     getSparklineData(game, n = 20) {
         const entries = this.getGameHistory(game).slice(0, n).reverse();
         return entries.map(e => this._extractMetric(game, e) || 0);
     }
 
-    // Counts the number of consecutive calendar days (ending today or yesterday)
-    // on which the user completed at least one session.
-    //
-    // Algorithm:
-    //   1. Collect the unique calendar dates present in the full history.
-    //   2. Sort those dates descending (most recent first).
-    //   3. Walk backwards from today; a day is part of the streak if it matches the
-    //      expected date exactly. A one-day grace is applied at position 0 so that a
-    //      streak earned yesterday is not broken before the user plays today.
-    //   4. The first gap terminates the streak.
     getDayStreak() {
         const history = this.getHistory();
         if (history.length === 0) return 0;
@@ -193,9 +175,6 @@ export class ScoreManager {
             if (d.getTime() === expected.getTime()) {
                 streak++;
             } else if (i === 0 && (today.getTime() - d.getTime()) <= oneDay) {
-                // Grace case: most-recent session was yesterday, not today.
-                // Slide the reference window back so yesterday becomes the new
-                // baseline and the streak is not prematurely broken.
                 streak++;
                 today.setTime(d.getTime());
             } else {
@@ -205,10 +184,6 @@ export class ScoreManager {
         return streak;
     }
 
-    // Draws a compact sparkline on the given canvas element.
-    // Used on individual game cards. Each data point is a metric value;
-    // the y-axis range is auto-scaled to the data. The most-recent point
-    // is highlighted with a cyan dot.
     drawSparkline(canvas, data) {
         if (!canvas || data.length < 2) return;
         const ctx = canvas.getContext('2d');
@@ -241,10 +216,6 @@ export class ScoreManager {
         }
     }
 
-    // Draws a larger sparkline with area fill for the analytics section.
-    // Renders a filled polygon beneath the line and a dot at each data point.
-    // Falls back to a "Not enough data" label when fewer than 2 points exist.
-    // color is a CSS hex string; the fill uses that color at ~8% opacity (appended '15').
     drawAnalyticsSparkline(canvas, data, color = '#7b2ff7') {
         if (!canvas || data.length < 2) {
             if (canvas) {
@@ -297,9 +268,6 @@ export class ScoreManager {
         });
     }
 
-    // Populates the best-score label and sparkline for every game card on the
-    // scores page. Cards are identified by the DOM id pattern 'card-best-{key}'.
-    // If no sessions exist for a game, the value cell shows '--'.
     renderCardBests() {
         const ALL_GAMES = [
             { key: 'schulte', unit: 's', label: 'Best Time', format: v => v.toFixed(1) + 's' },
@@ -332,12 +300,6 @@ export class ScoreManager {
         });
     }
 
-    // Builds and injects analytics cards into '#analytics-row'.
-    // Each card shows: rolling average over last 5 sessions, rolling average over
-    // last 20 sessions, total session count, and an area-fill sparkline.
-    // Games with zero recorded sessions are skipped entirely.
-    // Sparklines are deferred to the next animation frame so layout is settled
-    // before canvas dimensions are read.
     renderAnalytics() {
         const container = document.getElementById('analytics-row');
         container.innerHTML = '';
@@ -414,9 +376,6 @@ export class ScoreManager {
         });
     }
 
-    // Renders the full session history list into '#history-list'.
-    // Entries are already newest-first from localStorage.
-    // Each row shows: game name, displayText summary, and a formatted timestamp.
     renderHistory() {
         const list = document.getElementById('history-list');
         const history = this.getHistory();
@@ -463,8 +422,6 @@ export class ScoreManager {
         });
     }
 
-    // Updates the streak badge element ('#streak-badge') with the current day
-    // streak count. The badge is hidden entirely when the streak is 0.
     renderStreak() {
         const streak = this.getDayStreak();
         document.getElementById('streak-num').textContent = streak;
@@ -472,12 +429,6 @@ export class ScoreManager {
         badge.style.display = streak > 0 ? 'inline-flex' : 'none';
     }
 
-    // Top-level render orchestrator. Call this whenever the scores page is shown
-    // or data changes. Executes all four render passes in order:
-    //   1. renderHistory()   — session log list
-    //   2. renderCardBests() — per-game best-score cards with sparklines
-    //   3. renderAnalytics() — rolling-average analytics cards with area sparklines
-    //   4. renderStreak()    — consecutive-day streak badge
     renderAll() {
         this.renderHistory();
         this.renderCardBests();
@@ -485,8 +436,6 @@ export class ScoreManager {
         this.renderStreak();
     }
 
-    // Serialises the full history array to a pretty-printed JSON file and
-    // triggers a browser download named 'doddgames-export-YYYY-MM-DD.json'.
     exportData(username = '') {
         const history = this.getHistory();
         const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
@@ -499,33 +448,32 @@ export class ScoreManager {
         URL.revokeObjectURL(url);
     }
 
-    // Reads a previously exported JSON file and merges it into the current history.
-    // Deduplication strategy: entries from the import file whose ISO date string
-    // already exists in localStorage are silently dropped. Only genuinely new
-    // entries are added. The merged result is re-sorted newest-first and re-capped
-    // at 200 entries before being written back. renderAll() is called on success.
     importData(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const imported = JSON.parse(e.target.result);
                 if (!Array.isArray(imported)) throw new Error('Invalid format');
-                // Validate: each entry must have at least a game string and a date.
                 const valid = imported.filter(entry =>
                     entry && entry.game && entry.date && typeof entry.game === 'string'
                 );
-                const existing = this.getHistory();
-                // Use the ISO date string as a unique key for deduplication.
-                const existingDates = new Set(existing.map(e => e.date));
-                const newEntries = valid.filter(e => !existingDates.has(e.date));
-                const merged = [...existing, ...newEntries]
-                    .sort((a, b) => new Date(b.date) - new Date(a.date));
-                if (merged.length > 200) merged.length = 200;
-                localStorage.setItem(this.HISTORY_KEY, JSON.stringify(merged));
+                // Import each entry to the server
+                for (const entry of valid) {
+                    await fetch('/api/scores', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            game: entry.game,
+                            data: entry.data || {},
+                            displayText: entry.displayText || '',
+                        }),
+                    });
+                }
+                await this.loadFromServer();
                 this.renderAll();
-                alert(`Imported ${newEntries.length} new entries.`);
+                alert(`Imported ${valid.length} entries.`);
             } catch (err) {
                 alert('Invalid file format. Please select a valid DoddGames export JSON.');
             }

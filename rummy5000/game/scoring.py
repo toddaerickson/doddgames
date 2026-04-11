@@ -8,7 +8,7 @@ Card values:
   2–10        = face value
 """
 
-from game.deck import Card
+from .deck import Card
 
 
 def card_points(card: Card, in_low_run: bool = False) -> int:

@@ -3,7 +3,11 @@
 CREATE TABLE IF NOT EXISTS profiles (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL UNIQUE,
-    created_at  TEXT DEFAULT (datetime('now'))
+    color       TEXT DEFAULT '#7b2ff7',
+    age_bracket TEXT DEFAULT '',
+    colorblind  INTEGER DEFAULT 0,
+    created_at  TEXT DEFAULT (datetime('now')),
+    last_active_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS games (
@@ -31,4 +35,14 @@ CREATE TABLE IF NOT EXISTS rounds (
     ai_hand_pts     INTEGER NOT NULL DEFAULT 0,
     ai_net          INTEGER NOT NULL DEFAULT 0,
     went_out        TEXT CHECK (went_out IN ('player', 'ai', 'draw_exhausted'))
+);
+
+-- Brain game score history
+CREATE TABLE IF NOT EXISTS brain_scores (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    profile_id   INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
+    game_key     TEXT NOT NULL,
+    data         TEXT NOT NULL,
+    display_text TEXT,
+    played_at    TEXT DEFAULT (datetime('now'))
 );
