@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a1628">
+    <title>Reversi — DoddGames</title>
+    <link rel="stylesheet" href="/reversi/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- ═══════════ MENU SCREEN ═══════════ -->
+        <div id="screen-menu" class="screen active">
+            <div class="menu-screen">
+                <a href="/" class="back-link">&larr; DoddGames</a>
+                <h1 class="title">Reversi</h1>
+                <p class="subtitle">Othello-style strategy game</p>
+
+                <div class="menu-section">
+                    <label class="menu-label">AI Level</label>
+                    <div class="level-slider-container">
+                        <input type="range" id="level-slider" class="level-slider" min="1" max="10" value="5" step="1">
+                        <div class="level-display">
+                            <span class="level-number" id="level-number">5</span>
+                            <span class="level-name" id="level-label">Skilled</span>
+                        </div>
+                        <div class="level-range-labels">
+                            <span>Beginner</span>
+                            <span>Mastery</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <label class="menu-label">Play as</label>
+                    <div class="color-picker" id="color-picker">
+                        <button class="color-btn selected" data-color="black">
+                            <span class="piece piece-black"></span> Black (first)
+                        </button>
+                        <button class="color-btn" data-color="white">
+                            <span class="piece piece-white"></span> White (second)
+                        </button>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-play" id="btn-play">Play</button>
+
+                <div class="menu-section rules-section">
+                    <h3>How to Play</h3>
+                    <p>Place a disc to outflank your opponent's discs in any direction. Outflanked discs flip to your color. The player with the most discs when the board is full wins.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ GAME SCREEN ═══════════ -->
+        <div id="screen-game" class="screen">
+            <div class="game-layout">
+                <!-- Top bar: scores -->
+                <div class="score-bar">
+                    <div class="score-item score-black">
+                        <span class="piece piece-black piece-sm"></span>
+                        <span class="score-count" id="score-black">2</span>
+                    </div>
+                    <div class="turn-indicator" id="turn-indicator">
+                        <span class="piece piece-sm" id="turn-piece"></span>
+                        <span id="turn-text">Your turn</span>
+                    </div>
+                    <div class="score-item score-white">
+                        <span class="piece piece-white piece-sm"></span>
+                        <span class="score-count" id="score-white">2</span>
+                    </div>
+                </div>
+
+                <!-- Board -->
+                <div class="board-container">
+                    <div class="board" id="board"></div>
+                </div>
+
+                <!-- Action bar -->
+                <div class="action-bar">
+                    <button class="btn btn-action" id="btn-hint">Hint</button>
+                    <button class="btn btn-action" id="btn-undo">Undo</button>
+                    <button class="btn btn-action" id="btn-new">New Game</button>
+                    <button class="btn btn-action" id="btn-quit">Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ GAME OVER OVERLAY ═══════════ -->
+        <div class="overlay" id="overlay-gameover">
+            <div class="overlay-box">
+                <h2 id="gameover-title">Game Over</h2>
+                <p id="gameover-message"></p>
+                <div class="gameover-scores">
+                    <div class="go-score">
+                        <span class="piece piece-black"></span>
+                        <span id="go-black">0</span>
+                    </div>
+                    <div class="go-score">
+                        <span class="piece piece-white"></span>
+                        <span id="go-white">0</span>
+                    </div>
+                </div>
+                <div class="overlay-actions">
+                    <button class="btn btn-primary" id="btn-rematch">Play Again</button>
+                    <button class="btn" id="btn-go-menu">Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/reversi/app.js"></script>
+</body>
+</html>

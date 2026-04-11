@@ -1,6 +1,6 @@
 # DoddGames
 
-A unified game platform combining cognitive assessment brain games with classic card games, served from a single Flask application with shared user profiles.
+A unified game platform combining cognitive assessment brain games with strategy games, served from a single Flask application with shared user profiles.
 
 ## What's Inside
 
@@ -17,9 +17,11 @@ Organized into four cognitive domains, each game runs as a 5-minute timed sessio
 
 Includes a **Cognitive Profile** dashboard with radar charts, within-user z-scores, pattern matching against reference profiles, and retest tracking.
 
-### Rummy 5000
+### Strategy Games
 
-A full card game against AI opponents with three difficulty levels (Easy, Medium, Hard). Features include game save/resume, score history, and per-player statistics.
+**Reversi (Othello)** — Classic board game against AI with 10 difficulty levels from Beginner to Mastery. AI uses minimax with alpha-beta pruning and a positional + mobility heuristic. Features include undo, hints, and choice of playing as black or white.
+
+**Rummy 5000** — Card game against AI opponents with three difficulty levels (Easy, Medium, Hard). Features include game save/resume, score history, and per-player statistics.
 
 ## Architecture
 
@@ -28,6 +30,7 @@ server.py (Flask)
   |-- /                    DoddGames landing page + brain games (static SPA)
   |-- /api/users/          Shared user profile management
   |-- /api/scores/         Brain game score storage
+  |-- /reversi/            Reversi game (client-side, 10 AI levels)
   |-- /rummy5000/          Rummy 5000 SPA (Flask Blueprint)
   |-- /rummy5000/api/      Rummy 5000 game engine API
 ```
@@ -53,6 +56,10 @@ doddgames/
     profile.js            Cognitive profile dashboard (z-scores, radar chart)
     audio.js              Sound effects
     games/                12 game modules (one file each)
+  reversi/
+    index.html              Reversi game page
+    styles.css              Reversi styles
+    app.js                  Game engine, AI (minimax), and UI controller
   rummy5000/
     app.py                Flask Blueprint with game API endpoints
     game/                 Game engine, AI, deck, melds, scoring
@@ -69,7 +76,7 @@ pip install flask
 python server.py
 ```
 
-Open http://localhost:3000 for brain games, or http://localhost:3000/rummy5000 for Rummy 5000.
+Open http://localhost:3000 for brain games, http://localhost:3000/reversi/ for Reversi, or http://localhost:3000/rummy5000 for Rummy 5000.
 
 ## Deployment
 

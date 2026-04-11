@@ -78,6 +78,18 @@ def doddgames_js(path):
     return send_from_directory(os.path.join(DODDGAMES_ROOT, 'js'), path)
 
 
+# ── Reversi static file serving ───────────────────────
+
+@app.route('/reversi/')
+def reversi_index():
+    return send_from_directory(os.path.join(DODDGAMES_ROOT, 'reversi'), 'index.html')
+
+
+@app.route('/reversi/<path:path>')
+def reversi_static(path):
+    return send_from_directory(os.path.join(DODDGAMES_ROOT, 'reversi'), path)
+
+
 # ── Shared Profile API ────────────────────────────────
 # Used by both DoddGames brain games and Rummy 5000
 

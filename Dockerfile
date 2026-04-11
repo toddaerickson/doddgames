@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY index.html .
 COPY css/ ./css/
 COPY js/ ./js/
+COPY reversi/ ./reversi/
 
 # Rummy 5000 application
 COPY rummy5000/ ./rummy5000/
