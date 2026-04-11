@@ -403,22 +403,46 @@ class ReversiApp {
         const playerCount = this.playerColor === BLACK ? black : white;
         const aiCount = this.playerColor === BLACK ? white : black;
 
+        let result;
         const titleEl = document.getElementById('gameover-title');
         const msgEl = document.getElementById('gameover-message');
 
         if (playerCount > aiCount) {
+            result = 'win';
             titleEl.textContent = 'You Win!';
             titleEl.style.color = 'var(--gold)';
             msgEl.textContent = `You dominated the board ${playerCount} to ${aiCount}.`;
         } else if (aiCount > playerCount) {
+            result = 'loss';
             titleEl.textContent = 'AI Wins';
             titleEl.style.color = '#e74c3c';
             msgEl.textContent = `The AI outplayed you ${aiCount} to ${playerCount}.`;
         } else {
+            result = 'draw';
             titleEl.textContent = 'Draw!';
             titleEl.style.color = 'var(--accent)';
             msgEl.textContent = `A perfectly balanced game — ${playerCount} to ${aiCount}.`;
         }
+
+        // Save score to server (fire-and-forget)
+        const levelName = this._levelName(this.level);
+        const resultLabel = result === 'win' ? 'Win' : result === 'loss' ? 'Loss' : 'Draw';
+        fetch('/api/scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                game: 'reversi',
+                data: {
+                    level: this.level,
+                    levelName,
+                    playerDiscs: playerCount,
+                    aiDiscs: aiCount,
+                    result,
+                    playerColor: this.playerColor === BLACK ? 'black' : 'white',
+                },
+                displayText: `Lvl ${this.level} ${levelName} — ${resultLabel} ${playerCount}-${aiCount}`,
+            }),
+        }).catch(() => {});
 
         document.getElementById('overlay-gameover').classList.add('active');
     }

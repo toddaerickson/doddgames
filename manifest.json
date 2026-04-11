@@ -1,0 +1,14 @@
+{
+  "name": "DoddGames",
+  "short_name": "DoddGames",
+  "description": "Cognitive assessment brain games, Reversi, and Rummy 5000",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#0a0a1a",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

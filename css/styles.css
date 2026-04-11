@@ -1571,6 +1571,16 @@ a.card-link { text-decoration: none; color: inherit; }
     margin-bottom: 0.75rem;
 }
 
+.auth-success {
+    background: rgba(46, 204, 113, 0.15);
+    border: 1px solid #2ecc71;
+    color: #2ecc71;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
 .auth-submit { width: 100%; margin-top: 0.25rem; }
 .auth-guest { width: 100%; margin-top: 0.5rem; }
 

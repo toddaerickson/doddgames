@@ -79,6 +79,21 @@ def doddgames_index():
     return send_from_directory(DODDGAMES_ROOT, 'index.html')
 
 
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory(DODDGAMES_ROOT, 'manifest.json')
+
+
+@app.route('/icon-192.png')
+def icon_192():
+    return send_from_directory(DODDGAMES_ROOT, 'icon-192.png')
+
+
+@app.route('/icon-512.png')
+def icon_512():
+    return send_from_directory(DODDGAMES_ROOT, 'icon-512.png')
+
+
 @app.route('/css/<path:path>')
 def doddgames_css(path):
     return send_from_directory(os.path.join(DODDGAMES_ROOT, 'css'), path)
@@ -191,6 +206,36 @@ def auth_logout():
     session.pop('profile_id', None)
     session.pop('profile_name', None)
     return jsonify({'logged_out': True})
+
+
+@app.route('/api/auth/change-password', methods=['POST'])
+def auth_change_password():
+    pid = session.get('profile_id')
+    if not pid:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    data = request.get_json() or {}
+    current_pw = data.get('currentPassword', '')
+    new_pw = data.get('newPassword', '')
+
+    if not current_pw or not new_pw:
+        return jsonify({'error': 'Current and new password are required'}), 400
+    if len(new_pw) < 4:
+        return jsonify({'error': 'New password must be at least 4 characters'}), 400
+
+    with _db() as conn:
+        row = conn.execute(
+            "SELECT password_hash FROM profiles WHERE id = ?", (pid,)
+        ).fetchone()
+        if not row or not check_password_hash(row['password_hash'], current_pw):
+            return jsonify({'error': 'Current password is incorrect'}), 401
+
+        conn.execute(
+            "UPDATE profiles SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new_pw), pid)
+        )
+        conn.commit()
+        return jsonify({'success': True})
 
 
 @app.route('/api/auth/me', methods=['GET'])

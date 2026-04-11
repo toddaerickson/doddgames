@@ -7,6 +7,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # DoddGames static files
 COPY index.html .
+COPY manifest.json .
+COPY icon-192.png .
+COPY icon-512.png .
 COPY css/ ./css/
 COPY js/ ./js/
 COPY reversi/ ./reversi/
