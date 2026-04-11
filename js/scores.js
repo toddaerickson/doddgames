@@ -22,7 +22,7 @@ export class ScoreManager {
         try {
             const res = await fetch('/api/scores');
             const data = await res.json();
-            // Normalise server format to match the old localStorage format
+            // Normalise server response to internal history format
             this._history = data.map(entry => ({
                 game: entry.game_key,
                 data: entry.data,
