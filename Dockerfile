@@ -17,4 +17,7 @@ COPY rummy5000/ ./rummy5000/
 # Unified server
 COPY server.py .
 
+# Persistent data volume (mount on Railway for DB persistence across deploys)
+VOLUME ["/data"]
+
 CMD gunicorn server:app --bind 0.0.0.0:$PORT --workers 1

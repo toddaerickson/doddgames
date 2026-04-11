@@ -17,7 +17,8 @@ from .game.deck import Card
 from .models.profile import ProfileModel
 from .models.history import HistoryModel
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'db', 'rummy5000.db')
+DB_PATH = os.environ.get('DATABASE_PATH',
+    os.path.join(os.path.dirname(__file__), 'db', 'rummy5000.db'))
 
 # ── Database init ──────────────────────────────────────
 

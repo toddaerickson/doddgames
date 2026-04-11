@@ -1,12 +1,14 @@
--- Rummy 5000 database schema
+-- DoddGames unified database schema
 
 CREATE TABLE IF NOT EXISTS profiles (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT NOT NULL UNIQUE,
-    color       TEXT DEFAULT '#7b2ff7',
-    age_bracket TEXT DEFAULT '',
-    colorblind  INTEGER DEFAULT 0,
-    created_at  TEXT DEFAULT (datetime('now')),
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    username       TEXT UNIQUE,
+    password_hash  TEXT,
+    name           TEXT NOT NULL,
+    color          TEXT DEFAULT '#7b2ff7',
+    age_bracket    TEXT DEFAULT '',
+    colorblind     INTEGER DEFAULT 0,
+    created_at     TEXT DEFAULT (datetime('now')),
     last_active_at TEXT
 );
 
