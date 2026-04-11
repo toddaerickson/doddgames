@@ -1,9 +1,9 @@
 /* ==============================================================
-   APP CONTROLLER — navigation, timer, countdown, settings
+   APP CONTROLLER — navigation, timer, countdown, auth
    ==============================================================
    Singleton controller mounted as window.app.
    Owns all game instances, the session timer, the countdown
-   overlay, and cross-cutting concerns (audio, scores, visibility).
+   overlay, and cross-cutting concerns (audio, scores, auth).
 
    Game interface contract — every game module must expose:
      constructor(app)          receives the App singleton
@@ -31,7 +31,6 @@ import { ProfileManager } from './profile.js';
 
 class App {
     constructor() {
-        // Session length shared by all games (seconds)
         this.SESSION_DURATION = 5 * 60;
         this.currentGame = null;
         this.timerInterval = null;
@@ -90,13 +89,16 @@ class App {
             profileBtn.addEventListener('click', () => this.showProfile());
         }
 
-        // User switcher — dropdown toggle, create, and guest mode buttons
-        this._initUserSwitcher();
+        // User dropdown toggle
+        this._initUserDropdown();
 
-        // Listen for user changes (fired by UserManager on switch/create/delete)
+        // Auth form handlers
+        this._initAuthForms();
+
+        // Listen for user changes
         window.addEventListener('userChanged', () => this._onUserChanged());
 
-        // Visibility API — auto-pause on tab switch
+        // Visibility API
         document.addEventListener('visibilitychange', () => this._handleVisibilityChange());
 
         // Fullscreen buttons
@@ -108,29 +110,23 @@ class App {
             document.querySelectorAll('.fullscreen-btn').forEach(b => b.style.display = 'none');
         }
 
-        // Global pause key handler
+        // Pause key handler
         this._pauseKeyHandler = (e) => this._handlePauseKey(e);
         document.addEventListener('keydown', this._pauseKeyHandler);
 
-        // Resume button on pause overlay
         const resumeBtn = document.getElementById('pause-resume-btn');
         if (resumeBtn) resumeBtn.addEventListener('click', () => this.togglePause());
 
-        // Mobile pause button
         const mobilePauseBtn = document.getElementById('mobile-pause-btn');
         if (mobilePauseBtn) {
             mobilePauseBtn.addEventListener('click', () => this.togglePause());
         }
 
-        // Login prompt — wire up buttons
-        this._initLoginPrompt();
-
-        // Async initialisation: load data from server then render
+        // Async init
         this._asyncInit();
     }
 
     async _asyncInit() {
-        // Wait for user data to load from server
         await this.users.ready();
 
         // Load age bracket from active user
@@ -146,16 +142,218 @@ class App {
             });
         }
 
-        // Load scores from server
         await this.scores.loadFromServer();
 
-        // Initial render
-        this._renderUserSwitcher();
+        this._renderUserHeader();
         this.scores.renderAll();
 
-        // Show login prompt on first load if no active user
-        this._maybeShowLoginPrompt();
+        // Show login prompt if not logged in
+        if (!this.users.getActiveUser()) {
+            this._showAuthOverlay('login');
+        }
     }
+
+    // ── Auth UI ──────────────────────────────────────────────────────
+
+    _initAuthForms() {
+        // Toggle between login and register forms
+        document.getElementById('show-register-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this._showAuthOverlay('register');
+        });
+        document.getElementById('show-login-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            this._showAuthOverlay('login');
+        });
+
+        // Guest button
+        document.getElementById('auth-guest-btn').addEventListener('click', () => {
+            this._hideAuthOverlay();
+        });
+
+        // Login submit
+        document.getElementById('login-submit-btn').addEventListener('click', () => this._doLogin());
+        document.getElementById('login-password').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this._doLogin();
+        });
+
+        // Register submit
+        document.getElementById('register-submit-btn').addEventListener('click', () => this._doRegister());
+        document.getElementById('register-password').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this._doRegister();
+        });
+
+        // Color picker for register form
+        document.querySelectorAll('.user-color-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.user-color-option').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected');
+            });
+        });
+    }
+
+    _showAuthOverlay(mode) {
+        const overlay = document.getElementById('auth-overlay');
+        const loginForm = document.getElementById('auth-login-form');
+        const registerForm = document.getElementById('auth-register-form');
+
+        if (mode === 'register') {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+        } else {
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+        }
+
+        // Clear errors and fields
+        document.getElementById('login-error').style.display = 'none';
+        document.getElementById('register-error').style.display = 'none';
+
+        overlay.classList.add('active');
+    }
+
+    _hideAuthOverlay() {
+        document.getElementById('auth-overlay').classList.remove('active');
+    }
+
+    async _doLogin() {
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        const errorEl = document.getElementById('login-error');
+
+        if (!username || !password) {
+            errorEl.textContent = 'Please enter username and password.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        const result = await this.users.login(username, password);
+        if (result.error) {
+            errorEl.textContent = result.error;
+            errorEl.style.display = 'block';
+        } else {
+            this._hideAuthOverlay();
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+        }
+    }
+
+    async _doRegister() {
+        const username = document.getElementById('register-username').value.trim();
+        const password = document.getElementById('register-password').value;
+        const name = document.getElementById('register-name').value.trim();
+        const errorEl = document.getElementById('register-error');
+        const selectedColorEl = document.querySelector('.user-color-option.selected');
+        const color = selectedColorEl ? selectedColorEl.dataset.color : '#7b2ff7';
+
+        if (!username || !password) {
+            errorEl.textContent = 'Username and password are required.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        const result = await this.users.register(username, password, name || username, color);
+        if (result.error) {
+            errorEl.textContent = result.error;
+            errorEl.style.display = 'block';
+        } else {
+            this._hideAuthOverlay();
+            document.getElementById('register-username').value = '';
+            document.getElementById('register-password').value = '';
+            document.getElementById('register-name').value = '';
+        }
+    }
+
+    // ── User Header ─────────────────────────────────────────────────
+
+    _initUserDropdown() {
+        const switcherBtn = document.getElementById('user-switcher-btn');
+        if (switcherBtn) {
+            switcherBtn.addEventListener('click', () => {
+                document.getElementById('user-dropdown').classList.toggle('open');
+                document.getElementById('settings-panel').classList.remove('open');
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('user-dropdown');
+            const btn = document.getElementById('user-switcher-btn');
+            if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+
+        // Logout button
+        const logoutBtn = document.getElementById('user-logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                document.getElementById('user-dropdown').classList.remove('open');
+                await this.users.logout();
+                this._showAuthOverlay('login');
+            });
+        }
+
+        // Login button (shown when guest)
+        const loginBtn = document.getElementById('user-login-btn');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => {
+                document.getElementById('user-dropdown').classList.remove('open');
+                this._showAuthOverlay('login');
+            });
+        }
+    }
+
+    _renderUserHeader() {
+        const btn = document.getElementById('user-switcher-btn');
+        if (!btn) return;
+
+        const activeUser = this.users.getActiveUser();
+        const avatar = btn.querySelector('.user-avatar');
+        const nameEl = document.getElementById('user-display-name');
+        const logoutBtn = document.getElementById('user-logout-btn');
+        const loginBtn = document.getElementById('user-login-btn');
+
+        if (activeUser) {
+            avatar.style.background = activeUser.color;
+            nameEl.textContent = activeUser.name;
+            if (logoutBtn) logoutBtn.style.display = 'block';
+            if (loginBtn) loginBtn.style.display = 'none';
+        } else {
+            avatar.style.background = '#555';
+            nameEl.textContent = 'Guest';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+            if (loginBtn) loginBtn.style.display = 'block';
+        }
+
+        // Update profile screen user name
+        const profileName = document.getElementById('profile-user-name');
+        if (profileName) {
+            profileName.textContent = activeUser ? activeUser.name : 'Guest';
+        }
+
+        // Update settings label
+        const settingsLabel = document.getElementById('settings-user-label');
+        if (settingsLabel) {
+            settingsLabel.textContent = activeUser ? `Settings for ${activeUser.name}` : 'Settings (Guest)';
+        }
+    }
+
+    async _onUserChanged() {
+        this.scores = new ScoreManager();
+        await this.scores.loadFromServer();
+        this.profile = new ProfileManager(this.scores);
+
+        const ageSel = document.getElementById('age-bracket');
+        if (ageSel) {
+            const user = this.users.getActiveUser();
+            ageSel.value = user ? (user.age_bracket || '') : '';
+        }
+
+        this._renderUserHeader();
+        this.scores.renderAll();
+    }
+
+    // ── Visibility / Fullscreen / Pause ─────────────────────────────
 
     _handleVisibilityChange() {
         if (document.hidden) {
@@ -204,8 +402,6 @@ class App {
             btn.title = isFS ? 'Exit Fullscreen' : 'Fullscreen';
         });
     }
-
-    // ── Pause system ──────────────────────────────────────────────────────
 
     static SPACE_RESPONSE_GAMES = new Set(['gonogo', 'cpt']);
 
@@ -264,6 +460,8 @@ class App {
             }
         }
     }
+
+    // ── Game Flow ───────────────────────────────────────────────────
 
     startGame(game) {
         this.currentGame = game;
@@ -361,7 +559,7 @@ class App {
         this.currentGame = null;
         const switcherBtn = document.getElementById('user-switcher-btn');
         if (switcherBtn) switcherBtn.disabled = false;
-        this._renderUserSwitcher();
+        this._renderUserHeader();
         this.scores.renderAll();
     }
 
@@ -379,7 +577,6 @@ class App {
         this.stopTimer();
         this.timerInterval = setInterval(() => {
             if (this.gamePaused) return;
-
             this.timeLeft--;
             this._updateTimerDisplay(game);
             if (this.timeLeft <= 0) {
@@ -426,260 +623,6 @@ class App {
             this.startGame(game);
         };
         document.getElementById('overlay-complete').classList.add('active');
-    }
-
-    // ── User management ─────────────────────────────────────────────────────
-
-    _initUserSwitcher() {
-        const switcherBtn = document.getElementById('user-switcher-btn');
-        if (switcherBtn) {
-            switcherBtn.addEventListener('click', () => {
-                document.getElementById('user-dropdown').classList.toggle('open');
-                document.getElementById('settings-panel').classList.remove('open');
-            });
-        }
-
-        document.addEventListener('click', (e) => {
-            const dropdown = document.getElementById('user-dropdown');
-            const btn = document.getElementById('user-switcher-btn');
-            if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
-                dropdown.classList.remove('open');
-            }
-        });
-
-        const addBtn = document.getElementById('user-add-btn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => {
-                document.getElementById('user-dropdown').classList.remove('open');
-                this._openUserModal();
-            });
-        }
-
-        const guestBtn = document.getElementById('user-guest-btn');
-        if (guestBtn) {
-            guestBtn.addEventListener('click', async () => {
-                document.getElementById('user-dropdown').classList.remove('open');
-                await this.users.enterGuestMode();
-            });
-        }
-
-        const modalSave = document.getElementById('user-modal-save');
-        if (modalSave) modalSave.addEventListener('click', () => this._saveUserModal());
-
-        const modalCancel = document.getElementById('user-modal-cancel');
-        if (modalCancel) modalCancel.addEventListener('click', () => this._closeUserModal());
-
-        const modalDelete = document.getElementById('user-modal-delete');
-        if (modalDelete) modalDelete.addEventListener('click', () => this._deleteFromModal());
-
-        document.querySelectorAll('.user-color-option').forEach(el => {
-            el.addEventListener('click', () => {
-                document.querySelectorAll('.user-color-option').forEach(c => c.classList.remove('selected'));
-                el.classList.add('selected');
-            });
-        });
-
-        const exportAllBtn = document.getElementById('export-all-btn');
-        if (exportAllBtn) {
-            exportAllBtn.addEventListener('click', () => this._exportAllUsers());
-        }
-    }
-
-    _renderUserSwitcher() {
-        const btn = document.getElementById('user-switcher-btn');
-        const list = document.getElementById('user-dropdown-list');
-        if (!btn || !list) return;
-
-        const activeUser = this.users.getActiveUser();
-        const avatar = btn.querySelector('.user-avatar');
-        const nameEl = btn.querySelector('.user-switcher-name');
-
-        if (activeUser) {
-            avatar.style.background = activeUser.color;
-            nameEl.textContent = activeUser.name;
-        } else {
-            avatar.style.background = '#555';
-            nameEl.textContent = 'Guest';
-        }
-
-        list.innerHTML = '';
-        const users = this.users.getUsers();
-        users.forEach(u => {
-            const item = document.createElement('div');
-            item.className = 'user-dropdown-item' + (activeUser && u.id === activeUser.id ? ' active' : '');
-
-            const av = document.createElement('span');
-            av.className = 'user-avatar';
-            av.style.background = u.color;
-
-            const name = document.createElement('span');
-            name.className = 'user-item-name';
-            name.textContent = u.name;
-
-            const editBtn = document.createElement('button');
-            editBtn.className = 'user-edit-btn';
-            editBtn.textContent = '\u270E';
-            editBtn.title = 'Edit user';
-            editBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.getElementById('user-dropdown').classList.remove('open');
-                this._openUserModal(u);
-            });
-
-            item.appendChild(av);
-            item.appendChild(name);
-            item.appendChild(editBtn);
-            item.addEventListener('click', async () => {
-                document.getElementById('user-dropdown').classList.remove('open');
-                await this.users.switchUser(u.id);
-            });
-            list.appendChild(item);
-        });
-
-        const profileName = document.getElementById('profile-user-name');
-        if (profileName) {
-            profileName.textContent = activeUser ? activeUser.name : 'Guest';
-        }
-
-        const settingsLabel = document.getElementById('settings-user-label');
-        if (settingsLabel) {
-            settingsLabel.textContent = activeUser ? `Settings for ${activeUser.name}` : 'Settings (Guest)';
-        }
-
-        const switcherBtnEl = document.getElementById('user-switcher-btn');
-        if (switcherBtnEl) {
-            switcherBtnEl.disabled = this.currentGame !== null;
-        }
-    }
-
-    async _onUserChanged() {
-        // Reload scores from server for the new user
-        this.scores = new ScoreManager();
-        await this.scores.loadFromServer();
-        this.profile = new ProfileManager(this.scores);
-
-        const ageSel = document.getElementById('age-bracket');
-        if (ageSel) {
-            const user = this.users.getActiveUser();
-            ageSel.value = user ? (user.age_bracket || '') : '';
-        }
-
-        this._renderUserSwitcher();
-        this.scores.renderAll();
-    }
-
-    _openUserModal(user = null) {
-        const modal = document.getElementById('user-modal');
-        const nameInput = document.getElementById('user-modal-name');
-        const deleteBtn = document.getElementById('user-modal-delete');
-        const title = document.getElementById('user-modal-title');
-
-        this._editingUserId = user ? user.id : null;
-        title.textContent = user ? 'Edit User' : 'New User';
-        nameInput.value = user ? user.name : '';
-        deleteBtn.style.display = user ? 'inline-block' : 'none';
-
-        const selectedColor = user ? user.color : UserManager.AVATAR_COLORS[0];
-        document.querySelectorAll('.user-color-option').forEach(el => {
-            el.classList.toggle('selected', el.dataset.color === selectedColor);
-        });
-
-        modal.classList.add('active');
-        nameInput.focus();
-    }
-
-    _closeUserModal() {
-        document.getElementById('user-modal').classList.remove('active');
-        this._editingUserId = null;
-    }
-
-    async _saveUserModal() {
-        const name = document.getElementById('user-modal-name').value.trim();
-        if (!name) return;
-
-        const selectedColorEl = document.querySelector('.user-color-option.selected');
-        const color = selectedColorEl ? selectedColorEl.dataset.color : '#7b2ff7';
-
-        if (this._editingUserId) {
-            await this.users.renameUser(this._editingUserId, name);
-            await this.users.updateUserSettings(this._editingUserId, { color });
-        } else {
-            await this.users.createUser(name, color);
-        }
-
-        this._closeUserModal();
-    }
-
-    async _deleteFromModal() {
-        if (!this._editingUserId) return;
-        const users = this.users.getUsers();
-        const user = users.find(u => u.id === this._editingUserId);
-        if (!user) return;
-
-        if (confirm(`Delete "${user.name}" and all their history?`)) {
-            await this.users.deleteUser(this._editingUserId);
-            this._closeUserModal();
-        }
-    }
-
-    // ── Login prompt ─────────────────────────────────────────────────────
-
-    _initLoginPrompt() {
-        const newUserBtn = document.getElementById('login-new-user-btn');
-        if (newUserBtn) {
-            newUserBtn.addEventListener('click', () => {
-                this._closeLoginPrompt();
-                this._openUserModal();
-            });
-        }
-
-        const guestBtn = document.getElementById('login-guest-btn');
-        if (guestBtn) {
-            guestBtn.addEventListener('click', () => {
-                this._closeLoginPrompt();
-            });
-        }
-    }
-
-    _maybeShowLoginPrompt() {
-        if (this.users.getActiveUser()) return;
-
-        const modal = document.getElementById('login-prompt');
-        const list = document.getElementById('login-user-list');
-        if (!modal || !list) return;
-
-        const users = this.users.getUsers();
-        list.innerHTML = '';
-
-        if (users.length > 0) {
-            users.forEach(u => {
-                const item = document.createElement('div');
-                item.className = 'login-user-item';
-
-                const avatar = document.createElement('span');
-                avatar.className = 'user-avatar';
-                avatar.style.background = u.color;
-
-                const name = document.createElement('span');
-                name.className = 'login-user-item-name';
-                name.textContent = u.name;
-
-                item.appendChild(avatar);
-                item.appendChild(name);
-                item.addEventListener('click', async () => {
-                    await this.users.switchUser(u.id);
-                    this._closeLoginPrompt();
-                });
-                list.appendChild(item);
-            });
-        }
-
-        modal.classList.add('active');
-    }
-
-    _closeLoginPrompt() {
-        const modal = document.getElementById('login-prompt');
-        if (modal) modal.classList.remove('active');
     }
 
     _exportAllUsers() {

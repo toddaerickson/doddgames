@@ -2,3 +2,5 @@
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Mount a persistent volume at /data for the SQLite database.
+# Set DATABASE_PATH=/data/doddgames.db in Railway environment variables.

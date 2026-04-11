@@ -1,35 +1,35 @@
 /* ==============================================================
-   USER MANAGER — server-side profiles via /api/users
+   USER MANAGER — authentication via /api/auth
    ==============================================================
-   Manages user profiles stored in the server's SQLite database.
-   Each user gets isolated brain-game score history on the server.
+   Manages user authentication with username + password.
+   All data is stored server-side in SQLite; the Flask session
+   cookie tracks who is logged in across browser restarts.
 
-   Guest mode: when no user is active (profile_id not in session),
-   scores are stored with profile_id = NULL on the server.
-
-   All methods that interact with the server are async.
+   Public API:
+     await ready()              wait for initial auth check
+     getActiveUser()            returns cached user or null
+     async login(u, p)          log in, returns user or {error}
+     async register(u,p,n,c)    create account, returns user or {error}
+     async logout()             log out
+     async updateUserSettings() update profile fields
    ============================================================== */
 export class UserManager {
     constructor() {
-        // Local cache of users and active user, populated by init()
-        this._users = [];
         this._activeUser = null;
         this._ready = this._init();
     }
 
     async _init() {
         await this._refreshActiveUser();
-        await this._refreshUsers();
     }
 
-    /** Wait for initial data load to complete. */
     async ready() {
         await this._ready;
     }
 
     async _refreshActiveUser() {
         try {
-            const res = await fetch('/api/users/active');
+            const res = await fetch('/api/auth/me');
             const data = await res.json();
             this._activeUser = data.id ? data : null;
         } catch {
@@ -37,68 +37,40 @@ export class UserManager {
         }
     }
 
-    async _refreshUsers() {
-        try {
-            const res = await fetch('/api/users');
-            this._users = await res.json();
-        } catch {
-            this._users = [];
-        }
-    }
-
     // ── Public API ───────────────────────────────────────────────────
-
-    getUsers() {
-        return this._users;
-    }
 
     getActiveUser() {
         return this._activeUser;
     }
 
-    async createUser(name, color) {
-        const res = await fetch('/api/users', {
+    async login(username, password) {
+        const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, color }),
+            body: JSON.stringify({ username, password }),
         });
-        if (!res.ok) return null;
-        const user = await res.json();
-        this._activeUser = user;
-        await this._refreshUsers();
+        const data = await res.json();
+        if (!res.ok) return { error: data.error || 'Login failed' };
+        this._activeUser = data;
         this._fireChange();
-        return user;
+        return data;
     }
 
-    async renameUser(userId, newName) {
-        await fetch(`/api/users/${userId}`, {
-            method: 'PUT',
+    async register(username, password, name, color) {
+        const res = await fetch('/api/auth/register', {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: newName }),
+            body: JSON.stringify({ username, password, name, color }),
         });
-        await this._refreshUsers();
-        await this._refreshActiveUser();
+        const data = await res.json();
+        if (!res.ok) return { error: data.error || 'Registration failed' };
+        this._activeUser = data;
         this._fireChange();
+        return data;
     }
 
-    async deleteUser(userId) {
-        await fetch(`/api/users/${userId}`, { method: 'DELETE' });
-        await this._refreshUsers();
-        await this._refreshActiveUser();
-        this._fireChange();
-    }
-
-    async switchUser(userId) {
-        const res = await fetch(`/api/users/${userId}/select`, { method: 'POST' });
-        if (res.ok) {
-            this._activeUser = await res.json();
-            await this._refreshUsers();
-            this._fireChange();
-        }
-    }
-
-    async enterGuestMode() {
-        await fetch('/api/users/guest', { method: 'POST' });
+    async logout() {
+        await fetch('/api/auth/logout', { method: 'POST' });
         this._activeUser = null;
         this._fireChange();
     }
@@ -108,6 +80,7 @@ export class UserManager {
         if ('ageBracket' in settings) body.ageBracket = settings.ageBracket;
         if ('colorblind' in settings) body.colorblind = settings.colorblind;
         if ('color' in settings) body.color = settings.color;
+        if ('name' in settings) body.name = settings.name;
         await fetch(`/api/users/${userId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -117,10 +90,10 @@ export class UserManager {
     }
 
     async touchActiveUser() {
-        // Server updates last_active_at on score save, no separate call needed
+        // Server updates last_active_at on score save
     }
 
-    // ── Preset colors for the user avatar picker ─────────────────────
+    // ── Preset colors for the avatar picker ──────────────────────────
 
     static AVATAR_COLORS = [
         '#7b2ff7', '#e74c3c', '#3498db', '#2ecc71',

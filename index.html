@@ -25,18 +25,17 @@
     <!-- Header: app title, sound toggle, settings gear, and profile shortcut. -->
     <div class="landing-header">
         <h1>DoddGames</h1>
-        <!-- User switcher: shows active user avatar + name; dropdown for switching/creating users -->
+        <!-- User display: shows logged-in name or Log In link -->
         <div class="user-switcher">
-            <button class="user-switcher-btn" id="user-switcher-btn" title="Switch User">
+            <button class="user-switcher-btn" id="user-switcher-btn" title="Account">
                 <span class="user-avatar"></span>
-                <span class="user-switcher-name">Guest</span>
-                <span class="user-chevron">&#9662;</span>
+                <span class="user-switcher-name" id="user-display-name">Guest</span>
             </button>
             <div class="user-dropdown" id="user-dropdown">
-                <div class="user-dropdown-list" id="user-dropdown-list"></div>
                 <div class="user-dropdown-actions">
-                    <button class="user-dropdown-action" id="user-add-btn">+ New User</button>
-                    <button class="user-dropdown-action" id="user-guest-btn">Guest Mode</button>
+                    <button class="user-dropdown-action" id="user-settings-btn" style="display:none">Settings</button>
+                    <button class="user-dropdown-action" id="user-logout-btn" style="display:none">Log Out</button>
+                    <button class="user-dropdown-action" id="user-login-btn">Log In</button>
                 </div>
             </div>
         </div>
@@ -277,7 +276,6 @@
             <h3>Score History</h3>
             <div class="history-actions">
                 <button class="action-btn" onclick="app.scores.exportData(app.users.getActiveUser()?.name || '')">Export</button>
-                <button class="action-btn" id="export-all-btn">Export All Users</button>
                 <button class="action-btn" onclick="document.getElementById('import-file').click()">Import</button>
                 <button class="action-btn danger" onclick="app.scores.clearHistory()">Clear All</button>
             </div>
@@ -709,16 +707,43 @@
 <!-- Mobile pause button — visible on touch devices during game sessions (not Tetris, which has its own) -->
 <button class="mobile-pause-btn" id="mobile-pause-btn" style="display:none" aria-label="Pause game">&#9208;</button>
 
-<!-- ═══════════ LOGIN PROMPT ═══════════ -->
-<!-- Shown on page load when no user is logged in; encourages profile selection so scores are recorded. -->
-<div class="overlay" id="login-prompt">
-    <div class="overlay-box login-prompt-box">
-        <h2>Welcome to DoddGames</h2>
-        <p>Log in to track your scores and cognitive profile across sessions.</p>
-        <div class="login-user-list" id="login-user-list"></div>
-        <div class="login-prompt-actions">
-            <button class="btn btn-primary" id="login-new-user-btn">+ Create Profile</button>
-            <button class="btn btn-secondary" id="login-guest-btn">Continue as Guest</button>
+<!-- ═══════════ AUTH OVERLAY ═══════════ -->
+<!-- Login / Register form shown on page load when not logged in. -->
+<div class="overlay" id="auth-overlay">
+    <div class="overlay-box auth-box">
+        <!-- Login form -->
+        <div id="auth-login-form">
+            <h2>Welcome to DoddGames</h2>
+            <p>Log in to track your scores across devices.</p>
+            <div class="auth-error" id="login-error" style="display:none"></div>
+            <input type="text" id="login-username" class="auth-input" placeholder="Username" maxlength="20" autocomplete="username">
+            <input type="password" id="login-password" class="auth-input" placeholder="Password" autocomplete="current-password">
+            <button class="btn btn-primary auth-submit" id="login-submit-btn">Log In</button>
+            <p class="auth-switch">Don't have an account? <a href="#" id="show-register-btn">Create one</a></p>
+            <button class="btn btn-secondary auth-guest" id="auth-guest-btn">Continue as Guest</button>
+        </div>
+        <!-- Register form -->
+        <div id="auth-register-form" style="display:none">
+            <h2>Create Account</h2>
+            <p>Your scores will be saved and accessible from any device.</p>
+            <div class="auth-error" id="register-error" style="display:none"></div>
+            <input type="text" id="register-username" class="auth-input" placeholder="Username (3-20 chars)" maxlength="20" autocomplete="username">
+            <input type="password" id="register-password" class="auth-input" placeholder="Password (4+ chars)" autocomplete="new-password">
+            <input type="text" id="register-name" class="auth-input" placeholder="Display name (optional)" maxlength="20" autocomplete="off">
+            <div class="user-color-picker">
+                <span class="user-color-option selected" data-color="#7b2ff7" style="background:#7b2ff7"></span>
+                <span class="user-color-option" data-color="#e74c3c" style="background:#e74c3c"></span>
+                <span class="user-color-option" data-color="#3498db" style="background:#3498db"></span>
+                <span class="user-color-option" data-color="#2ecc71" style="background:#2ecc71"></span>
+                <span class="user-color-option" data-color="#f39c12" style="background:#f39c12"></span>
+                <span class="user-color-option" data-color="#e91e63" style="background:#e91e63"></span>
+                <span class="user-color-option" data-color="#00bcd4" style="background:#00bcd4"></span>
+                <span class="user-color-option" data-color="#ff5722" style="background:#ff5722"></span>
+                <span class="user-color-option" data-color="#9c27b0" style="background:#9c27b0"></span>
+                <span class="user-color-option" data-color="#4caf50" style="background:#4caf50"></span>
+            </div>
+            <button class="btn btn-primary auth-submit" id="register-submit-btn">Create Account</button>
+            <p class="auth-switch">Already have an account? <a href="#" id="show-login-btn">Log in</a></p>
         </div>
     </div>
 </div>
@@ -735,31 +760,6 @@
     </div>
 </div>
 
-<!-- ═══════════ USER MODAL ═══════════ -->
-<!-- Create/edit user overlay with name input and color picker. -->
-<div class="overlay" id="user-modal">
-    <div class="overlay-box user-modal-box">
-        <h2 id="user-modal-title">New User</h2>
-        <input type="text" id="user-modal-name" class="user-modal-input" placeholder="Name (max 20 chars)" maxlength="20" autocomplete="off">
-        <div class="user-color-picker">
-            <span class="user-color-option selected" data-color="#7b2ff7" style="background:#7b2ff7"></span>
-            <span class="user-color-option" data-color="#e74c3c" style="background:#e74c3c"></span>
-            <span class="user-color-option" data-color="#3498db" style="background:#3498db"></span>
-            <span class="user-color-option" data-color="#2ecc71" style="background:#2ecc71"></span>
-            <span class="user-color-option" data-color="#f39c12" style="background:#f39c12"></span>
-            <span class="user-color-option" data-color="#e91e63" style="background:#e91e63"></span>
-            <span class="user-color-option" data-color="#00bcd4" style="background:#00bcd4"></span>
-            <span class="user-color-option" data-color="#ff5722" style="background:#ff5722"></span>
-            <span class="user-color-option" data-color="#9c27b0" style="background:#9c27b0"></span>
-            <span class="user-color-option" data-color="#4caf50" style="background:#4caf50"></span>
-        </div>
-        <div class="user-modal-actions">
-            <button class="btn btn-primary" id="user-modal-save">Save</button>
-            <button class="btn btn-secondary" id="user-modal-cancel">Cancel</button>
-            <button class="btn btn-danger" id="user-modal-delete" style="display:none">Delete</button>
-        </div>
-    </div>
-</div>
 
 <!-- ═══════════ SESSION COMPLETE OVERLAY ═══════════ -->
 <!-- Shown after each game ends; #overlay-summary is filled with score/percentile text by app.js. -->

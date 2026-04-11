@@ -3,15 +3,17 @@
 Serves the DoddGames cognitive assessment platform at /
 and mounts Rummy 5000 at /rummy5000.
 
-Provides shared profile and brain-game score APIs so both
-apps use server-side storage with a single login.
+Provides shared authentication (username + password) and
+brain-game score APIs so all apps use a single login.
 """
 
 import os
 import json
 import sqlite3
+from datetime import timedelta
 
 from flask import Flask, send_from_directory, jsonify, request, session
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from rummy5000.app import rummy_bp, init_db, DB_PATH
 
@@ -20,26 +22,30 @@ from rummy5000.app import rummy_bp, init_db, DB_PATH
 app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY', 'doddgames-dev-key-change-in-production')
 
+# Sessions persist for 365 days so users stay logged in across browser restarts
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=365)
+
 # Initialize database (creates tables if needed)
 init_db()
 
-# Migrate existing DB: add columns introduced after the initial Rummy 5000 schema.
+# Migrate existing DB: add columns introduced after the initial schema.
 # Safe to run repeatedly — each ALTER is skipped if the column already exists.
 def _migrate_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # Check which columns exist on profiles
     cols = {row[1] for row in cursor.execute("PRAGMA table_info(profiles)").fetchall()}
     migrations = [
         ('color', "ALTER TABLE profiles ADD COLUMN color TEXT DEFAULT '#7b2ff7'"),
         ('age_bracket', "ALTER TABLE profiles ADD COLUMN age_bracket TEXT DEFAULT ''"),
         ('colorblind', "ALTER TABLE profiles ADD COLUMN colorblind INTEGER DEFAULT 0"),
         ('last_active_at', "ALTER TABLE profiles ADD COLUMN last_active_at TEXT"),
+        ('username', "ALTER TABLE profiles ADD COLUMN username TEXT UNIQUE"),
+        ('password_hash', "ALTER TABLE profiles ADD COLUMN password_hash TEXT"),
     ]
     for col, sql in migrations:
         if col not in cols:
             cursor.execute(sql)
-    # Create brain_scores table if needed
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS brain_scores (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +60,11 @@ def _migrate_db():
     conn.close()
 
 _migrate_db()
+
+# Mark every request's session as permanent so the cookie gets the long expiry
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 # Mount Rummy 5000 blueprint
 app.register_blueprint(rummy_bp, url_prefix='/rummy5000')
@@ -90,8 +101,7 @@ def reversi_static(path):
     return send_from_directory(os.path.join(DODDGAMES_ROOT, 'reversi'), path)
 
 
-# ── Shared Profile API ────────────────────────────────
-# Used by both DoddGames brain games and Rummy 5000
+# ── Database helper ───────────────────────────────────
 
 def _db():
     conn = sqlite3.connect(DB_PATH)
@@ -99,73 +109,114 @@ def _db():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
-
-@app.route('/api/users', methods=['GET'])
-def list_users():
-    with _db() as conn:
-        rows = conn.execute(
-            "SELECT id, name, color, age_bracket, colorblind, created_at, last_active_at "
-            "FROM profiles ORDER BY last_active_at DESC NULLS LAST, name"
-        ).fetchall()
-        return jsonify([dict(r) for r in rows])
+# Standard profile columns returned by auth and user endpoints
+_PROFILE_COLS = "id, username, name, color, age_bracket, colorblind, created_at, last_active_at"
 
 
-@app.route('/api/users', methods=['POST'])
-def create_user():
+# ── Authentication API ────────────────────────────────
+
+@app.route('/api/auth/register', methods=['POST'])
+def auth_register():
     data = request.get_json() or {}
+    username = (data.get('username') or '').strip().lower()
+    password = data.get('password', '')
     name = (data.get('name') or '').strip()[:20]
     color = data.get('color', '#7b2ff7')
+
+    if not username or len(username) < 3:
+        return jsonify({'error': 'Username must be at least 3 characters'}), 400
+    if len(username) > 20:
+        return jsonify({'error': 'Username must be 20 characters or fewer'}), 400
+    if not username.isalnum() and not all(c.isalnum() or c in '_-' for c in username):
+        return jsonify({'error': 'Username can only contain letters, numbers, hyphens, and underscores'}), 400
+    if not password or len(password) < 4:
+        return jsonify({'error': 'Password must be at least 4 characters'}), 400
     if not name:
-        return jsonify({'error': 'Name is required'}), 400
+        name = username
+
+    pw_hash = generate_password_hash(password)
 
     with _db() as conn:
         try:
             cursor = conn.execute(
-                "INSERT INTO profiles (name, color, last_active_at) VALUES (?, ?, datetime('now'))",
-                (name, color)
+                "INSERT INTO profiles (username, password_hash, name, color, last_active_at) "
+                "VALUES (?, ?, ?, ?, datetime('now'))",
+                (username, pw_hash, name, color)
             )
             conn.commit()
             pid = cursor.lastrowid
-            # Auto-select the new user
             session['profile_id'] = pid
             session['profile_name'] = name
             row = conn.execute(
-                "SELECT id, name, color, age_bracket, colorblind, created_at, last_active_at "
-                "FROM profiles WHERE id = ?", (pid,)
+                f"SELECT {_PROFILE_COLS} FROM profiles WHERE id = ?", (pid,)
             ).fetchone()
             return jsonify(dict(row)), 201
         except sqlite3.IntegrityError:
-            return jsonify({'error': f'Name "{name}" already exists'}), 400
+            return jsonify({'error': f'Username "{username}" is already taken'}), 400
 
 
-@app.route('/api/users/<int:uid>/select', methods=['POST'])
-def select_user(uid):
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    data = request.get_json() or {}
+    username = (data.get('username') or '').strip().lower()
+    password = data.get('password', '')
+
+    if not username or not password:
+        return jsonify({'error': 'Username and password are required'}), 400
+
     with _db() as conn:
         row = conn.execute(
-            "SELECT id, name, color, age_bracket, colorblind, created_at, last_active_at "
-            "FROM profiles WHERE id = ?", (uid,)
+            f"SELECT {_PROFILE_COLS}, password_hash FROM profiles WHERE username = ?",
+            (username,)
         ).fetchone()
         if not row:
-            return jsonify({'error': 'User not found'}), 404
+            return jsonify({'error': 'Invalid username or password'}), 401
+        if not row['password_hash'] or not check_password_hash(row['password_hash'], password):
+            return jsonify({'error': 'Invalid username or password'}), 401
+
         user = dict(row)
-        session['profile_id'] = uid
+        del user['password_hash']
+        session['profile_id'] = user['id']
         session['profile_name'] = user['name']
         conn.execute(
             "UPDATE profiles SET last_active_at = datetime('now') WHERE id = ?",
-            (uid,)
+            (user['id'],)
         )
         conn.commit()
         return jsonify(user)
 
 
+@app.route('/api/auth/logout', methods=['POST'])
+def auth_logout():
+    session.pop('profile_id', None)
+    session.pop('profile_name', None)
+    return jsonify({'logged_out': True})
+
+
+@app.route('/api/auth/me', methods=['GET'])
+def auth_me():
+    pid = session.get('profile_id')
+    if not pid:
+        return jsonify({'id': None, 'name': 'Guest'})
+    with _db() as conn:
+        row = conn.execute(
+            f"SELECT {_PROFILE_COLS} FROM profiles WHERE id = ?", (pid,)
+        ).fetchone()
+        if not row:
+            session.pop('profile_id', None)
+            return jsonify({'id': None, 'name': 'Guest'})
+        return jsonify(dict(row))
+
+
+# ── User Settings API ────────────────────────────────
+
 @app.route('/api/users/<int:uid>', methods=['PUT'])
 def update_user(uid):
+    if session.get('profile_id') != uid:
+        return jsonify({'error': 'Unauthorized'}), 403
+
     data = request.get_json() or {}
     with _db() as conn:
-        row = conn.execute("SELECT id FROM profiles WHERE id = ?", (uid,)).fetchone()
-        if not row:
-            return jsonify({'error': 'User not found'}), 404
-
         updates = []
         params = []
         if 'name' in data:
@@ -185,58 +236,16 @@ def update_user(uid):
 
         if updates:
             params.append(uid)
-            try:
-                conn.execute(
-                    f"UPDATE profiles SET {', '.join(updates)} WHERE id = ?",
-                    params
-                )
-                conn.commit()
-            except sqlite3.IntegrityError:
-                return jsonify({'error': 'Name already exists'}), 400
+            conn.execute(
+                f"UPDATE profiles SET {', '.join(updates)} WHERE id = ?",
+                params
+            )
+            conn.commit()
 
         row = conn.execute(
-            "SELECT id, name, color, age_bracket, colorblind, created_at, last_active_at "
-            "FROM profiles WHERE id = ?", (uid,)
+            f"SELECT {_PROFILE_COLS} FROM profiles WHERE id = ?", (uid,)
         ).fetchone()
         return jsonify(dict(row))
-
-
-@app.route('/api/users/<int:uid>', methods=['DELETE'])
-def delete_user(uid):
-    with _db() as conn:
-        conn.execute("DELETE FROM brain_scores WHERE profile_id = ?", (uid,))
-        conn.execute("DELETE FROM profiles WHERE id = ?", (uid,))
-        conn.commit()
-
-        # If deleted user was active, clear session
-        if session.get('profile_id') == uid:
-            session.pop('profile_id', None)
-            session.pop('profile_name', None)
-
-        return jsonify({'deleted': True})
-
-
-@app.route('/api/users/active', methods=['GET'])
-def active_user():
-    pid = session.get('profile_id')
-    if not pid:
-        return jsonify({'id': None, 'name': 'Guest'})
-    with _db() as conn:
-        row = conn.execute(
-            "SELECT id, name, color, age_bracket, colorblind, created_at, last_active_at "
-            "FROM profiles WHERE id = ?", (pid,)
-        ).fetchone()
-        if not row:
-            session.pop('profile_id', None)
-            return jsonify({'id': None, 'name': 'Guest'})
-        return jsonify(dict(row))
-
-
-@app.route('/api/users/guest', methods=['POST'])
-def guest_mode():
-    session.pop('profile_id', None)
-    session.pop('profile_name', None)
-    return jsonify({'id': None, 'name': 'Guest'})
 
 
 # ── Brain Game Score API ──────────────────────────────
@@ -247,7 +256,6 @@ def get_scores():
     pid = session.get('profile_id')
     game = request.args.get('game')
 
-    # Build query dynamically to avoid four near-identical branches
     where = []
     params = []
     if pid:
@@ -293,7 +301,6 @@ def save_score():
             "VALUES (?, ?, ?, ?)",
             (pid, game_key, json.dumps(game_data), display_text)
         )
-        # Update last_active_at on profile
         if pid:
             conn.execute(
                 "UPDATE profiles SET last_active_at = datetime('now') WHERE id = ?",

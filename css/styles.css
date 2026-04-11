@@ -1538,30 +1538,58 @@ a.card-link { text-decoration: none; color: inherit; }
 
 .user-dropdown-action:hover { border-color: #7b2ff7; color: #ccc; }
 
-/* ── User Modal ──────────────────────────── */
-/* Create/edit overlay; reuses .overlay pattern from session-complete */
-.user-modal-box { max-width: 360px; }
+/* ── Auth Forms ──────────────────────────── */
 
-.user-modal-input {
+.auth-box { max-width: 400px; }
+
+.auth-box h2 {
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.auth-input {
     width: 100%;
-    padding: 0.6rem 1rem;
+    padding: 0.7rem 1rem;
     font-size: 1rem;
     background: #0a0a1a;
     border: 2px solid #2a2a4a;
     border-radius: 10px;
     color: #fff;
     outline: none;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
+}
+.auth-input:focus { border-color: #7b2ff7; }
+
+.auth-error {
+    background: rgba(231, 76, 60, 0.15);
+    border: 1px solid #e74c3c;
+    color: #e74c3c;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
 }
 
-.user-modal-input:focus { border-color: #7b2ff7; }
+.auth-submit { width: 100%; margin-top: 0.25rem; }
+.auth-guest { width: 100%; margin-top: 0.5rem; }
+
+.auth-switch {
+    text-align: center;
+    color: #666 !important;
+    font-size: 0.85rem !important;
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+}
+.auth-switch a { color: #7b2ff7; text-decoration: none; }
+.auth-switch a:hover { text-decoration: underline; }
 
 .user-color-picker {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-    margin-bottom: 1.2rem;
+    margin-bottom: 1rem;
 }
 
 .user-color-option {
@@ -1575,25 +1603,6 @@ a.card-link { text-decoration: none; color: inherit; }
 
 .user-color-option:hover { transform: scale(1.15); }
 .user-color-option.selected { border-color: #fff; transform: scale(1.15); }
-
-.user-modal-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-}
-
-.btn-danger {
-    background: #e74c3c;
-    color: #fff;
-    padding: 0.6rem 1.4rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.btn-danger:hover { opacity: 0.85; }
 
 /* ── Settings user label ─────────────────── */
 .settings-user-label {
@@ -1649,66 +1658,6 @@ a.card-link { text-decoration: none; color: inherit; }
     }
 }
 
-/* ── Login Prompt ────────────────────────── */
-/* First-load modal prompting the user to select or create a profile. */
-.login-prompt-box {
-    max-width: 400px;
-}
-
-.login-prompt-box h2 {
-    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.login-user-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1.2rem;
-    max-height: 240px;
-    overflow-y: auto;
-}
-
-.login-user-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.7rem 1rem;
-    background: #1a1a35;
-    border: 1px solid #2a2a4a;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-}
-
-.login-user-item:hover {
-    border-color: #7b2ff7;
-    background: #22224a;
-}
-
-.login-user-item .user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.login-user-item-name {
-    font-size: 1rem;
-    color: #e0e0e0;
-    font-weight: 500;
-}
-
-.login-prompt-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.login-prompt-actions .btn {
-    width: 100%;
-}
 
 /* ── Digit Span ───────────────────────────── */
 .digit-span-instruction {
