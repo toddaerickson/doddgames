@@ -296,7 +296,9 @@ class App {
     }
 
     _enableMeldSelection() {
-        // Cancel any previous meld selection
+        // Cancel any previous meld selection, then attach temporary click
+        // listeners to each meld group. An AbortController lets us remove
+        // all listeners at once when the selection completes or is cancelled.
         this._disableMeldSelection();
 
         const abort = new AbortController();

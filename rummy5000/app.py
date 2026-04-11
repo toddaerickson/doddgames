@@ -9,7 +9,7 @@ import time
 import uuid
 import json
 import sqlite3
-from flask import Blueprint, Flask, jsonify, request, session, render_template
+from flask import Blueprint, jsonify, request, session, render_template
 
 from .game.engine import GameEngine, GameError, Phase
 from .game.ai import AIPlayer

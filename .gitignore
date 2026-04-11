@@ -8,6 +8,18 @@ DoddGames.html
 bouncyballs.html
 game.js
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+*.db
+
+# Virtual environments
+venv/
+env/
+
 # OS files
 Thumbs.db
 .DS_Store

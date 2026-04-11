@@ -15,13 +15,16 @@ from flask import Flask, send_from_directory, jsonify, request, session
 
 from rummy5000.app import rummy_bp, init_db, DB_PATH
 
+# static_folder=None because we serve DoddGames static files via explicit routes
+# and Rummy 5000 static files via its own Blueprint
 app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY', 'doddgames-dev-key-change-in-production')
 
 # Initialize database (creates tables if needed)
 init_db()
 
-# Migrate existing DB: add columns that may not exist yet
+# Migrate existing DB: add columns introduced after the initial Rummy 5000 schema.
+# Safe to run repeatedly — each ALTER is skipped if the column already exists.
 def _migrate_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -228,39 +231,29 @@ def guest_mode():
 
 @app.route('/api/scores', methods=['GET'])
 def get_scores():
+    """Return score history for the active user. Optional ?game= filter."""
     pid = session.get('profile_id')
     game = request.args.get('game')
 
+    # Build query dynamically to avoid four near-identical branches
+    where = []
+    params = []
+    if pid:
+        where.append("profile_id = ?")
+        params.append(pid)
+    else:
+        where.append("profile_id IS NULL")
+    if game:
+        where.append("game_key = ?")
+        params.append(game)
+
     with _db() as conn:
-        if game:
-            if pid:
-                rows = conn.execute(
-                    "SELECT id, game_key, data, display_text, played_at "
-                    "FROM brain_scores WHERE profile_id = ? AND game_key = ? "
-                    "ORDER BY played_at DESC LIMIT 200",
-                    (pid, game)
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT id, game_key, data, display_text, played_at "
-                    "FROM brain_scores WHERE profile_id IS NULL AND game_key = ? "
-                    "ORDER BY played_at DESC LIMIT 200",
-                    (game,)
-                ).fetchall()
-        else:
-            if pid:
-                rows = conn.execute(
-                    "SELECT id, game_key, data, display_text, played_at "
-                    "FROM brain_scores WHERE profile_id = ? "
-                    "ORDER BY played_at DESC LIMIT 200",
-                    (pid,)
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    "SELECT id, game_key, data, display_text, played_at "
-                    "FROM brain_scores WHERE profile_id IS NULL "
-                    "ORDER BY played_at DESC LIMIT 200"
-                ).fetchall()
+        rows = conn.execute(
+            "SELECT id, game_key, data, display_text, played_at "
+            "FROM brain_scores WHERE " + " AND ".join(where) +
+            " ORDER BY played_at DESC LIMIT 200",
+            params
+        ).fetchall()
 
         results = []
         for r in rows:
