@@ -22,6 +22,7 @@ class App {
         this.difficulty = 'medium';
         this.targetScore = 5000;
         this._meldClickAbort = null; // AbortController for meld selection listeners
+        this._inLayoffMode = false;  // true while waiting for user to pick a meld
         this._handRendered = false;  // track if initial deal animation done
 
         this._zoomLevel = 1.0;
@@ -255,6 +256,7 @@ class App {
     }
 
     async _meld() {
+        if (this._inLayoffMode) this._cancelLayoffMode();
         if (this.selectedCards.size < 3) {
             this._showStatus('Select at least 3 cards to meld.', true);
             return;
@@ -271,12 +273,26 @@ class App {
     }
 
     async _layoff() {
+        // Toggle: if already in layoff mode, cancel it
+        if (this._inLayoffMode) {
+            this._cancelLayoffMode();
+            return;
+        }
         if (this.selectedCards.size !== 1) {
             this._showStatus('Select exactly 1 card to lay off.', true);
             return;
         }
-        this._showStatus('Click on a meld to lay off the selected card.');
+        this._showStatus('Click on a meld to lay off — or click Lay Off again to cancel.');
+        this._inLayoffMode = true;
+        document.getElementById('btn-layoff').classList.add('active-mode');
         this._enableMeldSelection();
+    }
+
+    _cancelLayoffMode() {
+        this._inLayoffMode = false;
+        document.getElementById('btn-layoff').classList.remove('active-mode');
+        this._disableMeldSelection();
+        this._showStatus('Lay off cancelled.');
     }
 
     _enableMeldSelection() {
@@ -302,6 +318,8 @@ class App {
                     this._checkRoundEnd();
                 }
                 this._disableMeldSelection();
+                this._inLayoffMode = false;
+                document.getElementById('btn-layoff').classList.remove('active-mode');
             }, { signal: abort.signal });
         });
     }
@@ -317,6 +335,7 @@ class App {
     }
 
     async _discard() {
+        if (this._inLayoffMode) this._cancelLayoffMode();
         if (this.selectedCards.size !== 1) {
             this._showStatus('Select exactly 1 card to discard.', true);
             return;
@@ -499,6 +518,9 @@ class App {
         // Allow selection during meld/discard phase
         if (this.state.phase !== 'player_meld_or_discard') return;
 
+        // Cancel layoff mode when card selection changes
+        if (this._inLayoffMode) this._cancelLayoffMode();
+
         if (this.selectedCards.has(cardId)) {
             this.selectedCards.delete(cardId);
         } else {
@@ -511,7 +533,13 @@ class App {
     _updateActions() {
         const valid = this.state.valid_actions || [];
         document.getElementById('btn-meld').disabled = !valid.includes('meld') || this.selectedCards.size < 3;
-        document.getElementById('btn-layoff').disabled = !valid.includes('layoff') || this.selectedCards.size !== 1;
+        // Keep layoff button enabled while in layoff mode so user can cancel
+        const layoffBtn = document.getElementById('btn-layoff');
+        if (this._inLayoffMode) {
+            layoffBtn.disabled = false;
+        } else {
+            layoffBtn.disabled = !valid.includes('layoff') || this.selectedCards.size !== 1;
+        }
         document.getElementById('btn-discard').disabled = !valid.includes('discard') || this.selectedCards.size !== 1;
     }
 
