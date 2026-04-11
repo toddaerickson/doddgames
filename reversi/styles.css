@@ -198,8 +198,13 @@ html, body {
     padding: 1.25rem;
     border: 1px solid var(--border);
 }
-.rules-section h3 { font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--accent); }
-.rules-section p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; }
+.rules-section h3 { font-size: 1rem; margin-bottom: 0.75rem; color: var(--accent); }
+.rules-section h4 { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-top: 0.75rem; margin-bottom: 0.25rem; }
+.rules-section h4:first-of-type { margin-top: 0; }
+.rules-section p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 0.4rem; }
+.rules-section ul { font-size: 0.85rem; color: var(--text-dim); line-height: 1.7; padding-left: 1.2rem; margin-top: 0.25rem; }
+.rules-section li { margin-bottom: 0.3rem; }
+.rules-section strong { color: var(--text); }
 
 /* ── Pieces ──────────────────────────────────── */
 
