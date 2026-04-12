@@ -301,6 +301,81 @@ class App {
                 this._showAuthOverlay('login');
             });
         }
+
+        // Change password button
+        const changePwBtn = document.getElementById('user-changepw-btn');
+        if (changePwBtn) {
+            changePwBtn.addEventListener('click', () => {
+                document.getElementById('user-dropdown').classList.remove('open');
+                this._showChangePwOverlay();
+            });
+        }
+
+        // Change password form
+        document.getElementById('changepw-submit-btn').addEventListener('click', () => this._doChangePassword());
+        document.getElementById('changepw-cancel-btn').addEventListener('click', () => this._hideChangePwOverlay());
+        document.getElementById('changepw-confirm').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this._doChangePassword();
+        });
+    }
+
+    _showChangePwOverlay() {
+        document.getElementById('changepw-error').style.display = 'none';
+        document.getElementById('changepw-success').style.display = 'none';
+        document.getElementById('changepw-current').value = '';
+        document.getElementById('changepw-new').value = '';
+        document.getElementById('changepw-confirm').value = '';
+        document.getElementById('changepw-overlay').classList.add('active');
+        document.getElementById('changepw-current').focus();
+    }
+
+    _hideChangePwOverlay() {
+        document.getElementById('changepw-overlay').classList.remove('active');
+    }
+
+    async _doChangePassword() {
+        const current = document.getElementById('changepw-current').value;
+        const newPw = document.getElementById('changepw-new').value;
+        const confirm = document.getElementById('changepw-confirm').value;
+        const errorEl = document.getElementById('changepw-error');
+        const successEl = document.getElementById('changepw-success');
+
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+
+        if (!current || !newPw) {
+            errorEl.textContent = 'All fields are required.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        if (newPw !== confirm) {
+            errorEl.textContent = 'New passwords do not match.';
+            errorEl.style.display = 'block';
+            return;
+        }
+        if (newPw.length < 4) {
+            errorEl.textContent = 'New password must be at least 4 characters.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        const res = await fetch('/api/auth/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPassword: current, newPassword: newPw }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            errorEl.textContent = data.error || 'Failed to change password.';
+            errorEl.style.display = 'block';
+        } else {
+            successEl.textContent = 'Password updated successfully.';
+            successEl.style.display = 'block';
+            document.getElementById('changepw-current').value = '';
+            document.getElementById('changepw-new').value = '';
+            document.getElementById('changepw-confirm').value = '';
+        }
     }
 
     _renderUserHeader() {
@@ -312,16 +387,19 @@ class App {
         const nameEl = document.getElementById('user-display-name');
         const logoutBtn = document.getElementById('user-logout-btn');
         const loginBtn = document.getElementById('user-login-btn');
+        const changePwBtn = document.getElementById('user-changepw-btn');
 
         if (activeUser) {
             avatar.style.background = activeUser.color;
             nameEl.textContent = activeUser.name;
             if (logoutBtn) logoutBtn.style.display = 'block';
+            if (changePwBtn) changePwBtn.style.display = 'block';
             if (loginBtn) loginBtn.style.display = 'none';
         } else {
             avatar.style.background = '#555';
             nameEl.textContent = 'Guest';
             if (logoutBtn) logoutBtn.style.display = 'none';
+            if (changePwBtn) changePwBtn.style.display = 'none';
             if (loginBtn) loginBtn.style.display = 'block';
         }
 

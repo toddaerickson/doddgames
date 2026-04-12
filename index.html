@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>DoddGames — Cognitive Assessment Platform</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -33,7 +37,7 @@
             </button>
             <div class="user-dropdown" id="user-dropdown">
                 <div class="user-dropdown-actions">
-                    <button class="user-dropdown-action" id="user-settings-btn" style="display:none">Settings</button>
+                    <button class="user-dropdown-action" id="user-changepw-btn" style="display:none">Change Password</button>
                     <button class="user-dropdown-action" id="user-logout-btn" style="display:none">Log Out</button>
                     <button class="user-dropdown-action" id="user-login-btn">Log In</button>
                 </div>
@@ -744,6 +748,22 @@
             </div>
             <button class="btn btn-primary auth-submit" id="register-submit-btn">Create Account</button>
             <p class="auth-switch">Already have an account? <a href="#" id="show-login-btn">Log in</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ CHANGE PASSWORD OVERLAY ═══════════ -->
+<div class="overlay" id="changepw-overlay">
+    <div class="overlay-box auth-box">
+        <h2>Change Password</h2>
+        <div class="auth-error" id="changepw-error" style="display:none"></div>
+        <div class="auth-success" id="changepw-success" style="display:none"></div>
+        <input type="password" id="changepw-current" class="auth-input" placeholder="Current password" autocomplete="current-password">
+        <input type="password" id="changepw-new" class="auth-input" placeholder="New password (4+ chars)" autocomplete="new-password">
+        <input type="password" id="changepw-confirm" class="auth-input" placeholder="Confirm new password" autocomplete="new-password">
+        <div class="overlay-actions" style="margin-top:0.5rem">
+            <button class="btn btn-primary" id="changepw-submit-btn">Update Password</button>
+            <button class="btn btn-secondary" id="changepw-cancel-btn">Cancel</button>
         </div>
     </div>
 </div>

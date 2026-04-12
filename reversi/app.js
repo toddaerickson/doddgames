@@ -304,6 +304,7 @@ class ReversiApp {
         this.gameActive = true;
         this.aiThinking = false;
 
+        this._hideHintBar();
         this._showScreen('game');
         this._render();
 
@@ -313,12 +314,20 @@ class ReversiApp {
         }
     }
 
+    _hideHintBar() {
+        const hintBar = document.getElementById('hint-bar');
+        if (hintBar) hintBar.style.display = 'none';
+        clearTimeout(this._hintTimeout);
+    }
+
     _handleCellClick(r, c) {
         if (!this.gameActive || this.aiThinking) return;
         if (this.currentTurn !== this.playerColor) return;
 
         const flips = getFlips(this.board, r, c, this.playerColor);
         if (flips.length === 0) return;
+
+        this._hideHintBar();
 
         // Save state for undo
         this.history.push({
@@ -403,22 +412,46 @@ class ReversiApp {
         const playerCount = this.playerColor === BLACK ? black : white;
         const aiCount = this.playerColor === BLACK ? white : black;
 
+        let result;
         const titleEl = document.getElementById('gameover-title');
         const msgEl = document.getElementById('gameover-message');
 
         if (playerCount > aiCount) {
+            result = 'win';
             titleEl.textContent = 'You Win!';
             titleEl.style.color = 'var(--gold)';
             msgEl.textContent = `You dominated the board ${playerCount} to ${aiCount}.`;
         } else if (aiCount > playerCount) {
+            result = 'loss';
             titleEl.textContent = 'AI Wins';
             titleEl.style.color = '#e74c3c';
             msgEl.textContent = `The AI outplayed you ${aiCount} to ${playerCount}.`;
         } else {
+            result = 'draw';
             titleEl.textContent = 'Draw!';
             titleEl.style.color = 'var(--accent)';
             msgEl.textContent = `A perfectly balanced game — ${playerCount} to ${aiCount}.`;
         }
+
+        // Save score to server (fire-and-forget)
+        const levelName = this._levelName(this.level);
+        const resultLabel = result === 'win' ? 'Win' : result === 'loss' ? 'Loss' : 'Draw';
+        fetch('/api/scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                game: 'reversi',
+                data: {
+                    level: this.level,
+                    levelName,
+                    playerDiscs: playerCount,
+                    aiDiscs: aiCount,
+                    result,
+                    playerColor: this.playerColor === BLACK ? 'black' : 'white',
+                },
+                displayText: `Lvl ${this.level} ${levelName} — ${resultLabel} ${playerCount}-${aiCount}`,
+            }),
+        }).catch(() => {});
 
         document.getElementById('overlay-gameover').classList.add('active');
     }
@@ -434,8 +467,167 @@ class ReversiApp {
         const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
         if (cell) {
             cell.classList.add('hint-cell');
-            setTimeout(() => cell.classList.remove('hint-cell'), 1500);
+            setTimeout(() => cell.classList.remove('hint-cell'), 4000);
         }
+
+        // Show explanation
+        const explanation = this._explainMove(r, c);
+        const hintBar = document.getElementById('hint-bar');
+        hintBar.innerHTML = explanation;
+        hintBar.style.display = 'block';
+        // Auto-hide after 12 seconds (longer to read the lookahead analysis)
+        clearTimeout(this._hintTimeout);
+        this._hintTimeout = setTimeout(() => { hintBar.style.display = 'none'; }, 12000);
+    }
+
+    /** Analyze a move and return an HTML explanation of why it's good. */
+    _explainMove(r, c) {
+        const flips = getFlips(this.board, r, c, this.playerColor);
+        const opp = opponent(this.playerColor);
+        const colLabels = 'ABCDEFGH';
+        const pos = `${colLabels[c]}${r + 1}`;
+        const posName = (pr, pc) => `${colLabels[pc]}${pr + 1}`;
+
+        const reasons = [];
+        const corners = [[0,0],[0,7],[7,0],[7,7]];
+        const xSquares = [[1,1],[1,6],[6,1],[6,6]];
+        const isEdge = (r === 0 || r === 7 || c === 0 || c === 7);
+        const isCorner = corners.some(([cr,cc]) => cr === r && cc === c);
+
+        // ── Positional value ──
+
+        if (isCorner) {
+            reasons.push('This is a <strong>corner</strong> — the most powerful square. Corners can never be flipped and anchor entire edges.');
+        } else if (isEdge) {
+            reasons.push('This is an <strong>edge square</strong> — edge discs are hard to flip and help you control a whole side.');
+        }
+
+        if (xSquares.some(([xr,xc]) => xr === r && xc === c)) {
+            const adjCorner = corners.find(([cr,cc]) => Math.abs(cr-r) <= 1 && Math.abs(cc-c) <= 1);
+            if (adjCorner && this.board[adjCorner[0]][adjCorner[1]] === this.playerColor) {
+                reasons.push('Normally an X-square (diagonal to corner) is risky, but you already own the adjacent corner.');
+            }
+        }
+
+        // ── Flip count ──
+
+        if (flips.length >= 5) {
+            reasons.push(`Flips <strong>${flips.length} discs</strong> — a big swing that shifts the board in your favor.`);
+        } else if (flips.length >= 3) {
+            reasons.push(`Flips <strong>${flips.length} discs</strong>.`);
+        }
+
+        // ── Mobility analysis ──
+
+        const [newBoard] = applyMove(this.board, r, c, this.playerColor);
+        const myMovesBefore = getValidMoves(this.board, this.playerColor).length;
+        const myMovesAfter = getValidMoves(newBoard, this.playerColor).length;
+        const oppMovesBefore = getValidMoves(this.board, opp).length;
+        const oppMovesAfter = getValidMoves(newBoard, opp).length;
+
+        if (oppMovesAfter < oppMovesBefore && oppMovesBefore - oppMovesAfter >= 2) {
+            reasons.push(`Reduces opponent from ${oppMovesBefore} to <strong>${oppMovesAfter} moves</strong> — limiting their choices is key.`);
+        }
+        if (myMovesAfter > myMovesBefore) {
+            reasons.push(`Increases your mobility from ${myMovesBefore} to <strong>${myMovesAfter} moves</strong>.`);
+        }
+
+        // ── Defensive analysis ──
+
+        // Does this move block the opponent from taking a corner?
+        for (const [cr, cc] of corners) {
+            if (this.board[cr][cc] !== EMPTY) continue;
+            const oppCouldBefore = getFlips(this.board, cr, cc, opp).length > 0;
+            const oppCouldAfter = getFlips(newBoard, cr, cc, opp).length > 0;
+            if (oppCouldBefore && !oppCouldAfter) {
+                reasons.push(`<strong>Defensive:</strong> blocks opponent from taking corner ${posName(cr, cc)}.`);
+            }
+        }
+
+        // Does this move avoid giving the opponent a corner next turn?
+        const oppMovesOnNew = getValidMoves(newBoard, opp);
+        const oppGetsCorner = oppMovesOnNew.some(([mr, mc]) => corners.some(([cr,cc]) => cr === mr && cc === mc));
+        if (!oppGetsCorner && oppMovesOnNew.length > 0) {
+            // Check if other moves would give the opponent a corner
+            const otherMoves = getValidMoves(this.board, this.playerColor).filter(([mr,mc]) => mr !== r || mc !== c);
+            const othersGiveCorner = otherMoves.some(([mr, mc]) => {
+                const [altBoard] = applyMove(this.board, mr, mc, this.playerColor);
+                return getValidMoves(altBoard, opp).some(([ar, ac]) => corners.some(([cr,cc]) => cr === ar && cc === ac));
+            });
+            if (othersGiveCorner) {
+                reasons.push('<strong>Defensive:</strong> unlike other moves, this one doesn\'t give the opponent access to a corner.');
+            }
+        }
+
+        // Edge stability
+        if (isEdge && !isCorner) {
+            let hasEdgeNeighbor = false;
+            for (const [dr, dc] of DIRS) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && this.board[nr][nc] === this.playerColor) {
+                    if (nr === r || nc === c) { hasEdgeNeighbor = true; break; }
+                }
+            }
+            if (hasEdgeNeighbor) {
+                reasons.push('Extends your edge chain — connected edge discs are very stable.');
+            }
+        }
+
+        // ── Lookahead: what happens after opponent responds ──
+
+        if (oppMovesOnNew.length > 0) {
+            // Simulate opponent's best response, then our best follow-up
+            const oppBest = aiChooseMove(newBoard, opp, 4);
+            if (oppBest) {
+                const [boardAfterOpp] = applyMove(newBoard, oppBest[0], oppBest[1], opp);
+                const ourFollowUp = aiChooseMove(boardAfterOpp, this.playerColor, 4);
+                if (ourFollowUp) {
+                    const [fr, fc] = ourFollowUp;
+                    const followFlips = getFlips(boardAfterOpp, fr, fc, this.playerColor);
+                    const followPos = posName(fr, fc);
+
+                    let lookNote = `<strong>Looking ahead:</strong> after opponent responds, your best follow-up is <strong>${followPos}</strong>`;
+                    if (corners.some(([cr,cc]) => cr === fr && cc === fc)) {
+                        lookNote += ' — grabbing a corner!';
+                    } else if (fr === 0 || fr === 7 || fc === 0 || fc === 7) {
+                        lookNote += ` (edge, flips ${followFlips.length}).`;
+                    } else {
+                        lookNote += ` (flips ${followFlips.length}).`;
+                    }
+
+                    // Check one more move ahead
+                    const [boardAfterUs] = applyMove(boardAfterOpp, fr, fc, this.playerColor);
+                    const oppNext = aiChooseMove(boardAfterUs, opp, 3);
+                    if (oppNext) {
+                        const [boardAfterOpp2] = applyMove(boardAfterUs, oppNext[0], oppNext[1], opp);
+                        const ourMove3 = aiChooseMove(boardAfterOpp2, this.playerColor, 3);
+                        if (ourMove3) {
+                            const move3Pos = posName(ourMove3[0], ourMove3[1]);
+                            if (corners.some(([cr,cc]) => cr === ourMove3[0] && cc === ourMove3[1])) {
+                                lookNote += ` Then aim for corner <strong>${move3Pos}</strong>.`;
+                            } else {
+                                const { black, white } = countDiscs(boardAfterOpp2);
+                                const playerAfter = this.playerColor === BLACK ? black : white;
+                                const oppAfter = this.playerColor === BLACK ? white : black;
+                                if (playerAfter > oppAfter) {
+                                    lookNote += ` You'd lead <strong>${playerAfter}-${oppAfter}</strong> after 3 moves.`;
+                                }
+                            }
+                        }
+                    }
+
+                    reasons.push(lookNote);
+                }
+            }
+        }
+
+        // ── Fallback ──
+
+        if (reasons.length === 0) {
+            reasons.push(`Flips ${flips.length} disc${flips.length !== 1 ? 's' : ''} — the AI evaluates this as the strongest positional choice.`);
+        }
+
+        return `<strong>${pos}:</strong> ${reasons.join(' ')}`;
     }
 
     _undo() {

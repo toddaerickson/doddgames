@@ -80,6 +80,36 @@ class App {
     }
 
     async _checkActiveProfile() {
+        // First check if user is logged in via shared DoddGames auth
+        try {
+            const res = await fetch('/api/auth/me');
+            const authUser = await res.json();
+            if (authUser && authUser.id) {
+                // User is logged in — auto-select/create a matching Rummy profile
+                const rummyProfile = await this._api('/api/profiles/active');
+                if (rummyProfile && rummyProfile.id) {
+                    // Already has a Rummy profile selected
+                    document.getElementById('menu-player-name').textContent = authUser.name;
+                    await this._checkResume();
+                    this._showScreen('menu');
+                    return;
+                }
+                // Try to find or create a Rummy profile matching the auth user
+                const profiles = await this._api('/api/profiles');
+                const match = profiles && profiles.find(p => p.name === authUser.name);
+                if (match) {
+                    await this._api(`/api/profiles/${match.id}/select`, 'POST');
+                } else {
+                    await this._api('/api/profiles', 'POST', { name: authUser.name });
+                }
+                document.getElementById('menu-player-name').textContent = authUser.name;
+                await this._checkResume();
+                this._showScreen('menu');
+                return;
+            }
+        } catch { /* fallback to legacy profile check */ }
+
+        // Legacy fallback: check Rummy's own profile system
         const profile = await this._api('/api/profiles/active');
         if (profile && profile.name && profile.name !== 'Guest') {
             document.getElementById('menu-player-name').textContent = profile.name;
