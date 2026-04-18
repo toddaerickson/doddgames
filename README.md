@@ -1,6 +1,6 @@
 # DoddGames
 
-A unified game platform combining cognitive assessment brain games with strategy games, served from a single Flask application with shared user profiles.
+A unified game platform combining cognitive assessment brain games with strategy games, served from a single Flask application with username + password authentication that works across devices.
 
 ## What's Inside
 
@@ -19,26 +19,47 @@ Includes a **Cognitive Profile** dashboard with radar charts, within-user z-scor
 
 ### Strategy Games
 
-**Reversi (Othello)** — Classic board game against AI with 10 difficulty levels from Beginner to Mastery. AI uses minimax with alpha-beta pruning and a positional + mobility heuristic. Features include undo, hints, and choice of playing as black or white.
+**Reversi (Othello)** — Classic board game against AI with **10 difficulty levels** from Beginner to Mastery. AI uses minimax with alpha-beta pruning and a positional + mobility heuristic.
+
+- Undo, play as black or white
+- **Teaching hints** — explain *why* a suggested move is good, including positional value (corner/edge/X-square), defensive considerations (blocks opponent corners), and a 2-3 move lookahead
+- Win/loss/draw records saved to your score history
 
 **Rummy 5000** — Card game against AI opponents with three difficulty levels (Easy, Medium, Hard). Features include game save/resume, score history, and per-player statistics.
+
+## Authentication
+
+Users register with a **username + password** (hashed with werkzeug) and can log in from any browser or device.
+
+- Sessions persist 365 days via a permanent Flask session cookie
+- A single login carries across brain games, Reversi, and Rummy 5000
+- Rummy 5000's profile picker is skipped automatically for logged-in users
+- Change password available from the user dropdown
+- "Continue as Guest" supported for users who don't want an account
+
+## PWA Support
+
+Installable on mobile via `manifest.json` — "Add to Home Screen" on iOS/Android gives an app-like standalone experience with a custom icon.
 
 ## Architecture
 
 ```
 server.py (Flask)
   |-- /                    DoddGames landing page + brain games (static SPA)
-  |-- /api/users/          Shared user profile management
-  |-- /api/scores/         Brain game score storage
+  |-- /api/auth/           Register, login, logout, me, change-password
+  |-- /api/users/<id>      Update profile settings (name, color, age, etc.)
+  |-- /api/scores/         Brain game + Reversi score storage
   |-- /reversi/            Reversi game (client-side, 10 AI levels)
   |-- /rummy5000/          Rummy 5000 SPA (Flask Blueprint)
   |-- /rummy5000/api/      Rummy 5000 game engine API
+  |-- /manifest.json       PWA manifest
+  |-- /icon-192.png, /icon-512.png  PWA icons
 ```
 
-- **Single login** -- create a profile once, it carries across brain games and Rummy 5000 via Flask session
-- **Server-side storage** -- all user profiles and scores stored in SQLite (`rummy5000/db/rummy5000.db`)
+- **Server-side storage** — all user profiles and scores stored in SQLite (`DATABASE_PATH` env var, defaults to `rummy5000/db/rummy5000.db`)
 - **Brain games** are a pure client-side SPA (HTML/CSS/JS) served as static files
-- **Rummy 5000** is a full-stack app with a Flask backend managing game state and an AI opponent
+- **Reversi** is fully client-side; AI runs in the browser
+- **Rummy 5000** is a full-stack Blueprint with server-side game state and AI
 
 ## Project Structure
 
@@ -47,23 +68,25 @@ doddgames/
   server.py               Unified Flask server (entry point)
   Dockerfile              Production container (gunicorn)
   railway.toml            Railway deployment config
-  index.html              DoddGames landing page
+  manifest.json           PWA manifest
+  icon-192.png, icon-512.png  PWA icons
+  index.html              DoddGames landing page (login + game cards)
   css/styles.css          DoddGames styles
   js/
-    app.js                Main app controller (navigation, timer, user management)
-    users.js              User profile manager (talks to /api/users)
+    app.js                Main controller (navigation, timer, auth)
+    users.js              Auth client (talks to /api/auth)
     scores.js             Score manager (talks to /api/scores)
-    profile.js            Cognitive profile dashboard (z-scores, radar chart)
+    profile.js            Cognitive profile dashboard
     audio.js              Sound effects
-    games/                12 game modules (one file each)
+    games/                12 brain game modules
   reversi/
     index.html              Reversi game page
     styles.css              Reversi styles
-    app.js                  Game engine, AI (minimax), and UI controller
+    app.js                  Game engine, AI (minimax), teaching hints
   rummy5000/
     app.py                Flask Blueprint with game API endpoints
     game/                 Game engine, AI, deck, melds, scoring
-    models/               SQLite models for profiles and game history
+    models/               SQLite models for game history
     db/schema.sql         Database schema
     static/               Rummy 5000 frontend (CSS + JS)
     templates/            Rummy 5000 HTML template
@@ -80,32 +103,41 @@ Open http://localhost:3000 for brain games, http://localhost:3000/reversi/ for R
 
 ## Deployment
 
-The `Dockerfile` builds a production image using gunicorn:
+The `Dockerfile` builds a production image using gunicorn. Deployed on [Railway](https://railway.app) via `railway.toml`.
 
-```bash
-docker build -t doddgames .
-docker run -p 3000:3000 -e PORT=3000 doddgames
-```
+### Required environment variables
 
-Deployed on [Railway](https://railway.app) via the `railway.toml` config.
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `SECRET_KEY` | Secures Flask session cookies | A random string — `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `DATABASE_PATH` | Path to SQLite DB file (for persistence) | `/data/doddgames.db` |
 
-Set the `SECRET_KEY` environment variable in production for secure session handling.
+### Persistent storage on Railway
+
+Railway containers have ephemeral filesystems — to keep users and scores across deploys:
+
+1. Service Settings → Volumes → Add Volume → mount path `/data`
+2. Set `DATABASE_PATH=/data/doddgames.db`
 
 ## API Overview
 
-### User Profiles (`/api/users`)
+### Authentication (`/api/auth`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/users` | List all profiles |
-| POST | `/api/users` | Create profile `{name, color}` |
-| POST | `/api/users/<id>/select` | Set active user |
-| PUT | `/api/users/<id>` | Update settings |
-| DELETE | `/api/users/<id>` | Delete profile and scores |
-| GET | `/api/users/active` | Get active profile |
-| POST | `/api/users/guest` | Enter guest mode |
+| POST | `/api/auth/register` | Create account `{username, password, name, color}` |
+| POST | `/api/auth/login` | Log in `{username, password}` |
+| POST | `/api/auth/logout` | Clear session |
+| POST | `/api/auth/change-password` | Update password `{currentPassword, newPassword}` |
+| GET  | `/api/auth/me` | Get current user (or Guest) |
 
-### Brain Game Scores (`/api/scores`)
+### User Settings (`/api/users`)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PUT | `/api/users/<id>` | Update display name, color, age bracket, colorblind mode |
+
+### Scores (`/api/scores`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
