@@ -53,26 +53,26 @@ export class StroopGame {
         // Each entry has a display name (the word shown) and a hex value (the ink).
         this.DEFAULT_COLORS = {
             1: [
-                { name: 'Red', hex: '#e74c3c' },
-                { name: 'Blue', hex: '#3498db' },
-                { name: 'Green', hex: '#2ecc71' },
-                { name: 'Yellow', hex: '#f1c40f' }
+                { name: 'Red', hex: '#ff0000' },
+                { name: 'Blue', hex: '#0000ff' },
+                { name: 'Green', hex: '#00ff00' },
+                { name: 'Yellow', hex: '#ffff00' }
             ],
             2: [
-                { name: 'Red', hex: '#e74c3c' },
-                { name: 'Blue', hex: '#3498db' },
-                { name: 'Green', hex: '#2ecc71' },
-                { name: 'Yellow', hex: '#f1c40f' },
+                { name: 'Red', hex: '#ff0000' },
+                { name: 'Blue', hex: '#0000ff' },
+                { name: 'Green', hex: '#00ff00' },
+                { name: 'Yellow', hex: '#ffff00' },
                 { name: 'Purple', hex: '#9b59b6' },
-                { name: 'Orange', hex: '#e67e22' }
+                { name: 'Orange', hex: '#ff8000' }
             ],
             3: [
-                { name: 'Red', hex: '#e74c3c' },
-                { name: 'Blue', hex: '#3498db' },
-                { name: 'Green', hex: '#2ecc71' },
-                { name: 'Yellow', hex: '#f1c40f' },
+                { name: 'Red', hex: '#ff0000' },
+                { name: 'Blue', hex: '#0000ff' },
+                { name: 'Green', hex: '#00ff00' },
+                { name: 'Yellow', hex: '#ffff00' },
                 { name: 'Purple', hex: '#9b59b6' },
-                { name: 'Orange', hex: '#e67e22' },
+                { name: 'Orange', hex: '#ff8000' },
                 { name: 'Pink', hex: '#fd79a8' },
                 { name: 'Cyan', hex: '#00cec9' }
             ]
