@@ -404,7 +404,6 @@
     <!-- #stroop-word displays the stimulus; #stroop-buttons is populated dynamically with color choices. -->
     <div class="stroop-word" id="stroop-word"></div>
     <div class="stroop-buttons" id="stroop-buttons"></div>
-    <div class="stroop-feedback" id="stroop-feedback" role="status" aria-live="assertive"></div>
 </div>
 
 <!-- ═══════════ TRAIL MAKING A ═══════════ -->
@@ -659,9 +658,7 @@
         <div class="stat"><div class="label">Avg RT</div><div class="value" id="cpt-rt" role="status" aria-live="polite">--</div></div>
     </div>
     <p class="schulte-instruction">Press <strong>SPACE</strong> when you see <strong style="color:#00d4ff">X</strong>, but <strong style="color:#e74c3c">NOT</strong> if <strong style="color:#f39c12">A</strong> came before it.</p>
-    <!-- #cpt-instruction-context: shows the cue letter (A or non-A) one step before the probe. -->
     <div class="cpt-area" id="cpt-area">
-        <div class="cpt-context" id="cpt-instruction-context"></div>
         <div class="cpt-letter" id="cpt-letter"></div>
         <button class="gonogo-tap-btn" id="cpt-tap-btn">TAP</button>
     </div>

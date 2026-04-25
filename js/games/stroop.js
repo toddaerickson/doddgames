@@ -166,7 +166,6 @@ export class StroopGame {
         document.getElementById('stroop-wrong').textContent = '0';
         document.getElementById('stroop-streak').textContent = '0';
         document.getElementById('stroop-accuracy').textContent = '--%';
-        document.getElementById('stroop-feedback').textContent = '';
 
         const labels = { 1: '(Easy \u2014 4 colors)', 2: '(Medium \u2014 6 colors)', 3: '(Hard \u2014 8 colors)' };
         document.getElementById('stroop-diff-label').textContent = labels[this.difficulty] || '';
@@ -274,23 +273,17 @@ export class StroopGame {
             this.incongruentRTs.push(rt);
         }
 
-        const feedbackEl = document.getElementById('stroop-feedback');
-
         if (chosen === this.currentAnswer) {
             this.correctCount++;
             this.streak++;
             if (this.streak > this.bestStreak) this.bestStreak = this.streak;
             btn.classList.add('flash-correct');
-            feedbackEl.textContent = 'Correct!';
-            feedbackEl.style.color = '#2ecc71';
             this.app.audio.playCorrect();
             this.app.audio.haptic(25);
         } else {
             this.wrongCount++;
             this.streak = 0;
             btn.classList.add('flash-wrong');
-            feedbackEl.textContent = `Wrong \u2014 it was ${this.currentAnswer}`;
-            feedbackEl.style.color = '#e74c3c';
             this.app.audio.playWrong();
             this.app.audio.haptic([50, 30, 50]);
         }
@@ -305,7 +298,6 @@ export class StroopGame {
         const delay = this.FEEDBACK_DELAYS[this.difficulty] || 400;
         setTimeout(() => {
             btn.classList.remove('flash-correct', 'flash-wrong');
-            feedbackEl.textContent = '';
             this._nextRound();
         }, delay);
     }
