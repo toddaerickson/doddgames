@@ -337,12 +337,12 @@ html, body {
     border-color: var(--accent);
 }
 .player-hand .card.must-meld {
-    border-bottom: 3px solid var(--gold);
-    box-shadow: 0 3px 8px rgba(255, 215, 0, 0.4);
+    border-bottom: 6px solid var(--gold);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.6);
 }
 .player-hand .card.must-meld.selected {
-    border-bottom: 3px solid var(--gold);
-    box-shadow: 0 0 12px rgba(88,166,255,0.6), 0 3px 8px rgba(255,215,0,0.4);
+    border-bottom: 6px solid var(--gold);
+    box-shadow: 0 0 12px rgba(88,166,255,0.6), 0 4px 12px rgba(255,215,0,0.6);
 }
 .player-hand .card.dragging { opacity: 0.3; }
 .player-hand .card.drag-over-left { border-left: 3px solid var(--accent); }
