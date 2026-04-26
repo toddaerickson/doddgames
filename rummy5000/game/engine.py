@@ -16,8 +16,9 @@ from enum import Enum
 from typing import Optional
 
 from .deck import Card, Deck
-from .melds import is_valid_meld, can_lay_off, find_all_possible_melds, find_layoff_options
-from .scoring import calculate_round_score, score_meld
+from .melds import is_valid_meld, can_lay_off, find_all_possible_melds, find_layoff_options, can_meld_card
+from .scoring import calculate_round_score, score_meld, card_points
+from .ai import evaluate_discard_pickup, partial_meld_value, discard_danger_from_table
 
 
 class Phase(str, Enum):
@@ -130,12 +131,18 @@ class GameEngine:
         if card_index < 0 or card_index >= len(self.discard_pile):
             raise GameError("Invalid discard pile index")
 
-        # Take cards from index to top (end of list)
+        # Preview the pickup before mutating state
         picked_up = self.discard_pile[card_index:]
-        self.discard_pile = self.discard_pile[:card_index]
-
-        # The targeted card must be melded this turn
         target_card = picked_up[0]
+
+        # Pre-validate: the target card must be meldable with the resulting hand
+        test_hand = self.player.hand + picked_up
+        all_table_melds = self.player.melds + self.ai.melds
+        if not can_meld_card(target_card, test_hand, all_table_melds):
+            raise GameError(f"Cannot pick up {target_card} — no valid meld or layoff possible")
+
+        # Validation passed — mutate state
+        self.discard_pile = self.discard_pile[:card_index]
         self._must_meld_card = target_card
         self._drawn_from_discard = target_card
 
@@ -155,6 +162,17 @@ class GameEngine:
         cards = self._find_cards_in_hand(self.player, card_ids)
         if not is_valid_meld(cards):
             raise GameError("Invalid meld — not a valid set or run")
+
+        # Check before mutate: if must-meld card is NOT in this meld,
+        # verify remaining hand can still satisfy the obligation
+        if self._must_meld_card and self._must_meld_card not in cards:
+            remaining = [c for c in self.player.hand if c not in cards]
+            # Include the new meld in table melds for layoff checking
+            all_table_melds = self.player.melds + self.ai.melds + [cards]
+            if not can_meld_card(self._must_meld_card, remaining, all_table_melds):
+                raise GameError(
+                    "This meld would make it impossible to use the required pickup card"
+                )
 
         # Remove from hand, add to melds
         for card in cards:
@@ -189,6 +207,17 @@ class GameEngine:
         # Validate BEFORE mutating state
         if not can_lay_off(card, target_meld):
             raise GameError("Card cannot be laid off on this meld")
+
+        # Check before mutate: if must-meld card is set and this isn't it,
+        # verify remaining hand can still satisfy the obligation
+        if self._must_meld_card and self._must_meld_card != card:
+            remaining = [c for c in self.player.hand if c.id != card_id]
+            # Simulate the table melds after this layoff
+            table_after = self.player.melds + self.ai.melds
+            if not can_meld_card(self._must_meld_card, remaining, table_after):
+                raise GameError(
+                    "This layoff would make it impossible to use the required pickup card"
+                )
 
         # Now safe to mutate
         self.player.hand.remove(card)
@@ -271,9 +300,11 @@ class GameEngine:
             return False
         if not is_valid_meld(cards):
             return False
+        # Validate ALL cards are in hand before removing any
+        if not all(card in self.ai.hand for card in cards):
+            return False
         for card in cards:
-            if card in self.ai.hand:
-                self.ai.hand.remove(card)
+            self.ai.hand.remove(card)
         self.ai.melds.append(cards)
         return True
 
@@ -285,16 +316,23 @@ class GameEngine:
             return False
         if not can_lay_off(card, all_melds[meld_index]):
             return False
-        if card in self.ai.hand:
-            self.ai.hand.remove(card)
+        if card not in self.ai.hand:
+            return False
+        self.ai.hand.remove(card)
         all_melds[meld_index].append(card)
         return True
 
     def ai_discard(self, card: Card):
         if self.phase in (Phase.ROUND_END, Phase.GAME_OVER):
             return
-        if card in self.ai.hand:
-            self.ai.hand.remove(card)
+        if card is None or card not in self.ai.hand:
+            # Fallback: discard first card in hand to avoid deadlock
+            if self.ai.hand:
+                card = self.ai.hand[0]
+            else:
+                self.phase = Phase.PLAYER_DRAW
+                return
+        self.ai.hand.remove(card)
         self.discard_pile.append(card)
         if not self.ai.hand:
             self._end_round('ai')
@@ -343,31 +381,153 @@ class GameEngine:
     # ── Hint ───────────────────────────────────────────
 
     def get_hint(self) -> dict:
-        """Suggest the best action for the current phase."""
+        """Suggest the best action for the current phase.
+
+        Balances offensive (meld value, go-out, deep pickups) and defensive
+        (danger scoring, partial meld preservation) strategy.
+        """
+        hand = self.player.hand
+        table_melds = self.player.melds + self.ai.melds
+
         if self.phase == Phase.PLAYER_DRAW:
-            # Check if top discard helps complete a meld
-            if self.discard_pile:
-                top = self.discard_pile[-1]
-                test_hand = self.player.hand + [top]
-                melds = find_all_possible_melds(test_hand)
-                has_meld_with_top = any(top in m for m in melds)
-                if has_meld_with_top:
-                    return {'action': 'pickup', 'message': f'Pick up {top} — it completes a meld!'}
-            return {'action': 'draw', 'message': 'Draw from the pile.'}
+            return self._hint_draw(hand, table_melds)
 
         if self.phase == Phase.PLAYER_MELD_OR_DISCARD:
-            melds = find_all_possible_melds(self.player.hand)
-            if melds:
-                best = max(melds, key=lambda m: score_meld(m))
-                card_ids = [c.id for c in best]
-                return {'action': 'meld', 'cards': card_ids,
-                        'message': f'Meld: {" ".join(str(c) for c in best)}'}
+            return self._hint_meld_or_discard(hand, table_melds)
 
-            # Find worst card to discard
-            if self.player.hand:
-                worst = max(self.player.hand, key=lambda c: c.point_value)
-                return {'action': 'discard', 'card': worst.id,
-                        'message': f'Discard {worst} (highest deadweight).'}
+        return {'message': 'No hint available.'}
+
+    def _hint_draw(self, hand, table_melds) -> dict:
+        """Hint for draw phase: evaluate deep discard pickups, not just top card."""
+        if self.discard_pile:
+            # Offensive: evaluate deeper discard pile pickups
+            result = evaluate_discard_pickup(hand, self.discard_pile, table_melds)
+            if result:
+                idx, net_value = result
+                target = self.discard_pile[idx]
+                num_cards = len(self.discard_pile) - idx
+                if num_cards > 1:
+                    return {
+                        'action': 'pickup',
+                        'message': f'Pick up {num_cards} cards down to {target} — '
+                                   f'nets ~{int(net_value)} points in melds!',
+                    }
+                return {
+                    'action': 'pickup',
+                    'message': f'Pick up {target} — it completes a meld!',
+                }
+
+            # Fallback: check if just the top card completes a meld
+            top = self.discard_pile[-1]
+            test_hand = hand + [top]
+            melds = find_all_possible_melds(test_hand)
+            if any(top in m for m in melds):
+                return {
+                    'action': 'pickup',
+                    'message': f'Pick up {top} — it completes a meld!',
+                }
+
+        return {'action': 'draw', 'message': 'Draw from the pile — nothing useful in the discard.'}
+
+    def _hint_meld_or_discard(self, hand, table_melds) -> dict:
+        """Hint for meld/discard phase: go-out detection, layoffs, strategic discard."""
+        melds = find_all_possible_melds(hand)
+
+        # Priority 1: Must-meld obligation — guide toward satisfying it
+        if self._must_meld_card:
+            must_melds = [m for m in melds if self._must_meld_card in m]
+            if must_melds:
+                best = max(must_melds, key=lambda m: score_meld(m))
+                card_ids = [c.id for c in best]
+                return {
+                    'action': 'meld', 'cards': card_ids,
+                    'message': f'Meld {" ".join(str(c) for c in best)} '
+                               f'(includes your required pickup card).',
+                }
+            # Check layoff for must-meld card
+            for i, meld in enumerate(table_melds):
+                if can_lay_off(self._must_meld_card, meld):
+                    return {
+                        'action': 'layoff',
+                        'card': self._must_meld_card.id,
+                        'meld_index': i,
+                        'message': f'Lay off {self._must_meld_card} onto a table meld '
+                                   f'to satisfy your pickup obligation.',
+                    }
+            return {
+                'message': f'You need to meld or lay off {self._must_meld_card} before discarding.',
+            }
+
+        # Priority 2: Can we go out?
+        if melds and hand:
+            for meld in sorted(melds, key=lambda m: score_meld(m), reverse=True):
+                remaining = [c for c in hand if c not in meld]
+                if len(remaining) == 1:
+                    card_ids = [c.id for c in meld]
+                    return {
+                        'action': 'meld', 'cards': card_ids,
+                        'message': f'Go out! Meld {" ".join(str(c) for c in meld)}, '
+                                   f'then discard {remaining[0]}.',
+                    }
+                if len(remaining) == 0:
+                    card_ids = [c.id for c in meld]
+                    return {
+                        'action': 'meld', 'cards': card_ids,
+                        'message': f'Go out! Meld {" ".join(str(c) for c in meld)} to win the round!',
+                    }
+
+        # Priority 3: Suggest best meld (considering partial meld value of remaining hand)
+        if melds:
+            best = max(melds, key=lambda m: score_meld(m))
+            meld_value = score_meld(best)
+            remaining = [c for c in hand if c not in best]
+            remaining_partial = sum(partial_meld_value(c, remaining) for c in remaining)
+            card_ids = [c.id for c in best]
+
+            # Offensive: suggest the meld
+            msg = f'Meld {" ".join(str(c) for c in best)} ({meld_value} pts).'
+            # If remaining hand has good partial melds, note the strategy
+            if remaining_partial > 10 and len(remaining) > 3:
+                msg += ' Your remaining cards have good meld potential — keep building!'
+            return {'action': 'meld', 'cards': card_ids, 'message': msg}
+
+        # Priority 4: Suggest layoffs
+        layoffs = find_layoff_options(hand, table_melds)
+        high_layoffs = [(c, i) for c, i in layoffs if card_points(c) >= 10]
+        if high_layoffs:
+            card, meld_idx = high_layoffs[0]
+            return {
+                'action': 'layoff',
+                'card': card.id,
+                'meld_index': meld_idx,
+                'message': f'Lay off {card} ({card_points(card)} pts) to reduce your deadweight.',
+            }
+
+        # Priority 5: Smart discard — balance deadweight, danger, and partial value
+        if hand:
+            candidates = []
+            for card in hand:
+                pv = partial_meld_value(card, hand)
+                danger = discard_danger_from_table(card, table_melds)
+                # Score: high deadweight + low danger + low partial value = good discard
+                score = card.point_value * 2 - danger * 8 - pv * 3
+                candidates.append((card, score, pv, danger))
+
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            best_card, _, pv, danger = candidates[0]
+
+            reasons = []
+            reasons.append(f'{card_points(best_card)} pts deadweight')
+            if pv == 0:
+                reasons.append('not part of any partial meld')
+            if danger == 0:
+                reasons.append('low danger to opponent')
+
+            return {
+                'action': 'discard',
+                'card': best_card.id,
+                'message': f'Discard {best_card} ({", ".join(reasons)}).',
+            }
 
         return {'message': 'No hint available.'}
 
@@ -376,10 +536,15 @@ class GameEngine:
     def _find_cards_in_hand(self, player: PlayerState, card_ids: list[str]) -> list[Card]:
         """Find cards in a player's hand by their IDs."""
         cards = []
+        used: set[int] = set()  # track by object id to prevent duplicates
         for cid in card_ids:
-            found = next((c for c in player.hand if c.id == cid), None)
+            found = next(
+                (c for c in player.hand if c.id == cid and id(c) not in used),
+                None,
+            )
             if found is None:
                 raise GameError(f"Card {cid} not found in hand")
+            used.add(id(found))
             cards.append(found)
         return cards
 

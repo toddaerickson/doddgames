@@ -196,3 +196,15 @@ def find_layoff_options(hand: list[Card], table_melds: list[list[Card]]) -> list
             if can_lay_off(card, meld):
                 options.append((card, i))
     return options
+
+
+def can_meld_card(card: Card, hand: list[Card], table_melds: list[list[Card]] | None = None) -> bool:
+    """Check if card can be used in any new meld from hand, or laid off onto table melds.
+
+    Uses == comparison (Card.__eq__ compares by .id), safe across save/resume.
+    """
+    if any(card in m for m in find_all_possible_melds(hand)):
+        return True
+    if table_melds:
+        return any(can_lay_off(card, m) for m in table_melds)
+    return False
