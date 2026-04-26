@@ -243,6 +243,7 @@ class App {
             this._handRendered = true; // skip deal animation on resume
             this._showScreen('game');
             this._render();
+            this._checkRoundEnd();
         }
     }
 
@@ -472,14 +473,14 @@ class App {
     _renderMelds() {
         const playerMelds = document.getElementById('player-melds');
         playerMelds.innerHTML = '<span class="meld-label">Your Melds</span>';
-        this.state.player.melds.forEach((meld, i) => {
+        (this.state.player.melds || []).forEach((meld, i) => {
             playerMelds.appendChild(createMeldGroup(meld, { meldIndex: i }));
         });
 
         const aiMelds = document.getElementById('ai-melds');
         aiMelds.innerHTML = '<span class="meld-label">AI Melds</span>';
-        const offset = this.state.player.melds.length;
-        this.state.ai.melds.forEach((meld, i) => {
+        const offset = (this.state.player.melds || []).length;
+        (this.state.ai.melds || []).forEach((meld, i) => {
             aiMelds.appendChild(createMeldGroup(meld, { meldIndex: offset + i }));
         });
     }
