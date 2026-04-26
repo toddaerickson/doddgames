@@ -14,6 +14,108 @@ from .melds import (
 from .scoring import score_meld, card_points
 
 
+# ── Standalone strategy functions (used by both AI and hint system) ──
+
+
+def evaluate_discard_pickup(hand: list[Card], discard_pile: list[Card],
+                            table_melds: list[list[Card]] | None = None,
+                            max_depth: int = 5) -> tuple[int, float] | None:
+    """Evaluate if picking from the discard pile is net-positive.
+
+    Returns (card_index, net_value) for the best pickup, or None.
+    """
+    best_index = None
+    best_value = 0.0
+
+    for idx in range(max(0, len(discard_pile) - max_depth), len(discard_pile)):
+        pickup_cards = discard_pile[idx:]
+        target = pickup_cards[0]
+        test_hand = hand + pickup_cards
+
+        melds_after = find_all_possible_melds(test_hand)
+        valid_after = [m for m in melds_after if target in m]
+        if not valid_after:
+            # Also check layoff onto table melds
+            if table_melds and any(can_lay_off(target, m) for m in table_melds):
+                # Layoff is worth the target card's points minus deadweight
+                layoff_value = card_points(target)
+                deadweight = sum(card_points(c) for c in pickup_cards if c != target)
+                net = layoff_value - deadweight
+                if net > best_value and net > 15:
+                    best_value = net
+                    best_index = idx
+            continue
+
+        best_new_meld = max(valid_after, key=lambda m: score_meld(m))
+        meld_value = score_meld(best_new_meld)
+        deadweight = sum(card_points(c) for c in pickup_cards if c not in best_new_meld)
+
+        net = meld_value - deadweight
+        if net > best_value and net > 15:
+            best_value = net
+            best_index = idx
+
+    if best_index is not None:
+        return (best_index, best_value)
+    return None
+
+
+def partial_meld_value(card: Card, hand: list[Card]) -> float:
+    """How valuable is this card as part of a partial (incomplete) meld?"""
+    if card.is_joker:
+        return 10
+
+    value = 0.0
+    # Count same-rank cards (partial set)
+    same_rank = sum(1 for c in hand if c.rank == card.rank and not c.is_joker)
+    if same_rank >= 2:
+        value += 4  # pair — one card from a set
+
+    # Count adjacent same-suit cards (partial run)
+    same_suit = [c for c in hand if c.suit == card.suit and not c.is_joker]
+    for c in same_suit:
+        if c != card and abs(c.rank_index - card.rank_index) <= 2:
+            value += 3  # adjacent or one-gap
+
+    return value
+
+
+def discard_danger_score(card: Card, opponent_picked_ids: list[str]) -> float:
+    """Estimate how dangerous discarding this card is for the opponent."""
+    if card.is_joker:
+        return 10  # never discard jokers
+
+    danger = 0.0
+    for pid in opponent_picked_ids:
+        if pid.startswith('joker'):
+            continue
+        picked_rank = pid[:-1]
+        picked_suit_initial = pid[-1]
+        if picked_rank == card.rank:
+            danger += 3  # same rank — might complete a set
+        if picked_suit_initial == card.suit[0]:
+            if picked_rank in RANK_ORDER and card.rank in RANK_ORDER:
+                gap = abs(RANK_ORDER[picked_rank] - RANK_ORDER[card.rank])
+                if gap <= 2:
+                    danger += 2  # nearby same suit — might extend a run
+
+    return danger
+
+
+def discard_danger_from_table(card: Card, table_melds: list[list[Card]]) -> float:
+    """Simplified danger score based on public table melds (no tracking needed).
+
+    Checks if the opponent could lay off this card onto existing table melds.
+    """
+    if card.is_joker:
+        return 10
+    danger = 0.0
+    for meld in table_melds:
+        if can_lay_off(card, meld):
+            danger += 5  # opponent could use this card
+    return danger
+
+
 class AIPlayer:
     """AI decision maker that operates through a GameEngine instance."""
 
@@ -107,37 +209,9 @@ class AIPlayer:
 
     def _evaluate_discard_pickup(self, engine) -> int | None:
         """Hard mode: evaluate if picking from discard is net-positive."""
-        hand = engine.ai.hand
-        discard = engine.discard_pile
-
-        best_index = None
-        best_value = 0
-
-        # Check each possible pickup point (from deepest to top)
-        for idx in range(max(0, len(discard) - 5), len(discard)):
-            pickup_cards = discard[idx:]
-            target = pickup_cards[0]
-            test_hand = hand + pickup_cards
-
-            melds_before = find_all_possible_melds(hand)
-            melds_after = find_all_possible_melds(test_hand)
-
-            # Filter to melds that include the target card
-            valid_after = [m for m in melds_after if target in m]
-            if not valid_after:
-                continue
-
-            # Net value = best new meld value - deadweight of extra cards taken
-            best_new_meld = max(valid_after, key=lambda m: score_meld(m))
-            meld_value = score_meld(best_new_meld)
-            deadweight = sum(card_points(c) for c in pickup_cards if c not in best_new_meld)
-
-            net = meld_value - deadweight
-            if net > best_value and net > 15:  # threshold
-                best_value = net
-                best_index = idx
-
-        return best_index
+        table_melds = engine.player.melds + engine.ai.melds
+        result = evaluate_discard_pickup(engine.ai.hand, engine.discard_pile, table_melds)
+        return result[0] if result else None
 
     # ── Meld decision ──────────────────────────────────
 
@@ -285,48 +359,11 @@ class AIPlayer:
 
     def _discard_danger(self, card: Card, engine) -> float:
         """Estimate how dangerous discarding this card is for the opponent."""
-        if card.is_joker:
-            return 10  # never discard jokers
-
-        danger = 0
-        # Check if player recently picked similar cards
-        # Card IDs are like "Ah", "10s", "joker_red" — parse rank and suit
-        for pid in self.player_picked:
-            if pid.startswith('joker'):
-                continue
-            # Rank is everything except the last char; suit initial is last char
-            picked_rank = pid[:-1]
-            picked_suit_initial = pid[-1]
-            if picked_rank == card.rank:
-                danger += 3  # same rank — might complete a set
-            if picked_suit_initial == card.suit[0]:
-                # Check if ranks are adjacent (potential run)
-                from game.deck import RANK_ORDER
-                if picked_rank in RANK_ORDER and card.rank in RANK_ORDER:
-                    gap = abs(RANK_ORDER[picked_rank] - RANK_ORDER[card.rank])
-                    if gap <= 2:
-                        danger += 2  # nearby same suit — might extend a run
-
-        return danger
+        return discard_danger_score(card, self.player_picked)
 
     def _partial_meld_value(self, card: Card, hand: list[Card]) -> float:
         """How valuable is this card as part of a partial (incomplete) meld?"""
-        if card.is_joker:
-            return 10
-
-        value = 0
-        # Count same-rank cards (partial set)
-        same_rank = sum(1 for c in hand if c.rank == card.rank and not c.is_joker)
-        if same_rank >= 2:
-            value += 4  # pair — one card from a set
-
-        # Count adjacent same-suit cards (partial run)
-        same_suit = [c for c in hand if c.suit == card.suit and not c.is_joker]
-        for c in same_suit:
-            if c != card and abs(c.rank_index - card.rank_index) <= 2:
-                value += 3  # adjacent or one-gap
-
-        return value
+        return partial_meld_value(card, hand)
 
     # ── Execution helpers ──────────────────────────────
 
@@ -346,6 +383,7 @@ class AIPlayer:
             engine.ai_layoff(card, action['meld_index'])
 
     def _execute_discard(self, engine, action):
-        card = next((c for c in engine.ai.hand if c.id == action['card_id']), None)
-        if card:
-            engine.ai_discard(card)
+        card_id = action.get('card_id')
+        card = next((c for c in engine.ai.hand if c.id == card_id), None) if card_id else None
+        # Always discard something to avoid deadlocking in AI_TURN
+        engine.ai_discard(card)

@@ -495,6 +495,9 @@ class App {
                 el.classList.add('card-deal');
                 el.style.animationDelay = `${i * 0.05}s`;
             }
+            if (this.state.must_meld && card.id === this.state.must_meld) {
+                el.classList.add('must-meld');
+            }
             if (this.selectedCards.has(card.id)) {
                 el.classList.add('selected');
             }

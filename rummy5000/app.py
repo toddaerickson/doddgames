@@ -278,7 +278,12 @@ def discard_card():
         # AI turn
         ai_actions = []
         if engine.phase == Phase.AI_TURN:
-            ai_actions = ai.take_turn(engine)
+            try:
+                ai_actions = ai.take_turn(engine)
+            except Exception:
+                # Fallback: force AI to discard to avoid deadlock
+                if engine.phase == Phase.AI_TURN and engine.ai.hand:
+                    engine.ai_discard(engine.ai.hand[0])
 
             if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
                 _save_round_data()
@@ -463,5 +468,10 @@ def _restore_engine(state: dict) -> GameEngine:
     meld_id = state.get('_must_meld_card')
     if meld_id:
         engine._must_meld_card = next((c for c in engine.player.hand if c.id == meld_id), None)
+        if engine._must_meld_card is None:
+            # Card not found in hand after resume — constraint can't be enforced,
+            # reset to draw phase to avoid stuck state
+            engine.phase = Phase.PLAYER_DRAW
+            engine._drawn_from_discard = None
 
     return engine
