@@ -77,6 +77,14 @@ def _game_response(engine: GameEngine, ai_actions: list = None) -> dict:
     return resp
 
 
+def _save_state_json(engine: GameEngine, ai: AIPlayer) -> str:
+    """Serialize full game state including AIPlayer tracking data."""
+    state = json.loads(engine.to_json())
+    state['_ai_known_cards'] = list(ai.known_cards)
+    state['_ai_player_picked'] = list(ai.player_picked)
+    return json.dumps(state)
+
+
 # ── Blueprint ─────────────────────────────────────────
 
 rummy_bp = Blueprint('rummy', __name__,
@@ -342,7 +350,8 @@ def save_game():
         return jsonify({'error': 'No active game'}), 404
 
     db_id = entry['db_id']
-    state_json = engine.to_json()
+    ai = entry['ai']
+    state_json = _save_state_json(engine, ai)
     history.save_game_state(db_id, state_json)
     history.update_game(db_id, engine.player.total_score, engine.ai.total_score,
                         engine.round_number, 'in_progress', state_json)
@@ -361,6 +370,9 @@ def resume_game():
         state = json.loads(saved['saved_state'])
         engine = _restore_engine(state)
         ai = AIPlayer(difficulty=engine.difficulty)
+        # Restore AI card-counting state if available
+        ai.known_cards = set(state.get('_ai_known_cards', []))
+        ai.player_picked = list(state.get('_ai_player_picked', []))
 
         sid = _session_id()
         active_games[sid] = {
@@ -371,6 +383,8 @@ def resume_game():
         }
         return jsonify(_game_response(engine))
     except (json.JSONDecodeError, KeyError, ValueError) as e:
+        import logging
+        logging.warning("Failed to restore saved game: %s", e)
         return jsonify({'error': 'Saved game is corrupted'}), 400
 
 
@@ -427,9 +441,11 @@ def _save_round_data():
     if engine.phase == Phase.GAME_OVER:
         result = 'win' if engine.get_winner() == 'player' else 'loss'
 
+    ai = entry['ai']
+    state_json = _save_state_json(engine, ai)
     history.update_game(
         db_id, engine.player.total_score, engine.ai.total_score,
-        engine.round_number, result
+        engine.round_number, result, state_json
     )
 
 
