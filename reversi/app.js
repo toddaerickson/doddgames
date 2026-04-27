@@ -231,9 +231,12 @@ class ReversiApp {
         this.lastMove = null;
         this.gameActive = false;
         this.aiThinking = false;
+        this.paused = false;
 
         this._bindMenu();
         this._bindGame();
+        this._bindKeyboard();
+        this._bindBeforeUnload();
     }
 
     // ── Menu ─────────────────────────────────────
@@ -281,6 +284,61 @@ class ReversiApp {
             document.getElementById('overlay-gameover').classList.remove('active');
             this._showScreen('menu');
         });
+        document.getElementById('btn-resume').addEventListener('click', () => this._togglePause());
+        document.getElementById('btn-pause-quit').addEventListener('click', () => {
+            this._unpause();
+            this._showScreen('menu');
+        });
+    }
+
+    _bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if (!this.gameActive) return;
+            switch (e.key) {
+                case 'Escape':
+                case 'p':
+                case 'P':
+                    e.preventDefault();
+                    this._togglePause();
+                    break;
+                case 'h':
+                case 'H':
+                    if (!this.paused) this._showHint();
+                    break;
+                case 'u':
+                case 'U':
+                case 'z':
+                case 'Z':
+                    if (!this.paused) this._undo();
+                    break;
+                case 'n':
+                case 'N':
+                    if (!this.paused) this._startGame();
+                    break;
+            }
+        });
+    }
+
+    _bindBeforeUnload() {
+        window.addEventListener('beforeunload', (e) => {
+            if (this.gameActive && this.history.length > 0) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    _togglePause() {
+        if (this.paused) {
+            this._unpause();
+        } else {
+            this.paused = true;
+            document.getElementById('overlay-pause').classList.add('active');
+        }
+    }
+
+    _unpause() {
+        this.paused = false;
+        document.getElementById('overlay-pause').classList.remove('active');
     }
 
     _levelName(n) {
@@ -321,7 +379,7 @@ class ReversiApp {
     }
 
     _handleCellClick(r, c) {
-        if (!this.gameActive || this.aiThinking) return;
+        if (!this.gameActive || this.aiThinking || this.paused) return;
         if (this.currentTurn !== this.playerColor) return;
 
         const flips = getFlips(this.board, r, c, this.playerColor);
