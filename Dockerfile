@@ -20,4 +20,4 @@ COPY rummy5000/ ./rummy5000/
 # Unified server
 COPY server.py .
 
-CMD gunicorn server:app --bind 0.0.0.0:$PORT --workers 1
+CMD gunicorn server:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
