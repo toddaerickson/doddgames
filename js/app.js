@@ -123,7 +123,7 @@ class App {
         }
 
         // Async init
-        this._asyncInit();
+        this._asyncInit().catch(err => console.error('App init failed:', err));
     }
 
     async _asyncInit() {
@@ -353,28 +353,33 @@ class App {
             errorEl.style.display = 'block';
             return;
         }
-        if (newPw.length < 4) {
-            errorEl.textContent = 'New password must be at least 4 characters.';
+        if (newPw.length < 8) {
+            errorEl.textContent = 'New password must be at least 8 characters.';
             errorEl.style.display = 'block';
             return;
         }
 
-        const res = await fetch('/api/auth/change-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ currentPassword: current, newPassword: newPw }),
-        });
-        const data = await res.json();
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword: current, newPassword: newPw }),
+            });
+            const data = await res.json();
 
-        if (!res.ok) {
-            errorEl.textContent = data.error || 'Failed to change password.';
+            if (!res.ok) {
+                errorEl.textContent = data.error || 'Failed to change password.';
+                errorEl.style.display = 'block';
+            } else {
+                successEl.textContent = 'Password updated successfully.';
+                successEl.style.display = 'block';
+                document.getElementById('changepw-current').value = '';
+                document.getElementById('changepw-new').value = '';
+                document.getElementById('changepw-confirm').value = '';
+            }
+        } catch (err) {
+            errorEl.textContent = 'Network error — please try again.';
             errorEl.style.display = 'block';
-        } else {
-            successEl.textContent = 'Password updated successfully.';
-            successEl.style.display = 'block';
-            document.getElementById('changepw-current').value = '';
-            document.getElementById('changepw-new').value = '';
-            document.getElementById('changepw-confirm').value = '';
         }
     }
 
@@ -417,18 +422,22 @@ class App {
     }
 
     async _onUserChanged() {
-        this.scores = new ScoreManager();
-        await this.scores.loadFromServer();
-        this.profile = new ProfileManager(this.scores);
+        try {
+            this.scores = new ScoreManager();
+            await this.scores.loadFromServer();
+            this.profile = new ProfileManager(this.scores);
 
-        const ageSel = document.getElementById('age-bracket');
-        if (ageSel) {
-            const user = this.users.getActiveUser();
-            ageSel.value = user ? (user.age_bracket || '') : '';
+            const ageSel = document.getElementById('age-bracket');
+            if (ageSel) {
+                const user = this.users.getActiveUser();
+                ageSel.value = user ? (user.age_bracket || '') : '';
+            }
+
+            this._renderUserHeader();
+            this.scores.renderAll();
+        } catch (err) {
+            console.error('User change handler failed:', err);
         }
-
-        this._renderUserHeader();
-        this.scores.renderAll();
     }
 
     // ── Visibility / Fullscreen / Pause ─────────────────────────────

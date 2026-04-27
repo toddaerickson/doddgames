@@ -30,9 +30,11 @@ export class UserManager {
     async _refreshActiveUser() {
         try {
             const res = await fetch('/api/auth/me');
+            if (!res.ok) throw new Error(`Server returned ${res.status}`);
             const data = await res.json();
             this._activeUser = data.id ? data : null;
-        } catch {
+        } catch (err) {
+            console.warn('Failed to check auth status:', err);
             this._activeUser = null;
         }
     }
@@ -70,7 +72,11 @@ export class UserManager {
     }
 
     async logout() {
-        await fetch('/api/auth/logout', { method: 'POST' });
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (err) {
+            console.warn('Logout request failed:', err);
+        }
         this._activeUser = null;
         this._fireChange();
     }
@@ -81,11 +87,16 @@ export class UserManager {
         if ('colorblind' in settings) body.colorblind = settings.colorblind;
         if ('color' in settings) body.color = settings.color;
         if ('name' in settings) body.name = settings.name;
-        await fetch(`/api/users/${userId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
+        try {
+            const res = await fetch(`/api/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) console.warn('Settings update returned', res.status);
+        } catch (err) {
+            console.warn('Failed to update settings:', err);
+        }
         await this._refreshActiveUser();
     }
 

@@ -451,7 +451,7 @@ class ReversiApp {
                 },
                 displayText: `Lvl ${this.level} ${levelName} — ${resultLabel} ${playerCount}-${aiCount}`,
             }),
-        }).catch(() => {});
+        }).catch(err => console.warn('Reversi score save failed:', err));
 
         document.getElementById('overlay-gameover').classList.add('active');
     }
