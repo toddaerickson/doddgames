@@ -114,6 +114,11 @@ class App {
         this._pauseKeyHandler = (e) => this._handlePauseKey(e);
         document.addEventListener('keydown', this._pauseKeyHandler);
 
+        // Warn before navigating away during an active game
+        window.addEventListener('beforeunload', (e) => {
+            if (this.currentGame) e.preventDefault();
+        });
+
         const resumeBtn = document.getElementById('pause-resume-btn');
         if (resumeBtn) resumeBtn.addEventListener('click', () => this.togglePause());
 

@@ -32,6 +32,12 @@ class App {
         this._bindGameActions();
         this._bindProfiles();
         this._bindZoom();
+        this._bindKeyboard();
+
+        // Warn before navigating away during an active game
+        window.addEventListener('beforeunload', (e) => {
+            if (this.state && this.state.phase !== 'game_over') e.preventDefault();
+        });
 
         this._checkActiveProfile();
     }
@@ -267,6 +273,35 @@ class App {
         document.getElementById('btn-next-round').addEventListener('click', () => this._nextRound());
         document.getElementById('btn-play-again').addEventListener('click', () => this._startGame());
         document.getElementById('btn-gameover-menu').addEventListener('click', () => this._showScreen('menu'));
+    }
+
+    _bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if (!this.state) return;
+            const phase = this.state.phase;
+            switch (e.key) {
+                case 'd':
+                case 'D':
+                    if (phase === 'player_draw') this._drawFromPile();
+                    break;
+                case 'm':
+                case 'M':
+                    if (phase === 'player_meld_or_discard') this._meld();
+                    break;
+                case 'x':
+                case 'X':
+                    if (phase === 'player_meld_or_discard') this._discard();
+                    break;
+                case 'h':
+                case 'H':
+                    this._getHint();
+                    break;
+                case 's':
+                case 'S':
+                    if (!e.ctrlKey && !e.metaKey) this._saveGame();
+                    break;
+            }
+        });
     }
 
     async _drawFromPile() {
