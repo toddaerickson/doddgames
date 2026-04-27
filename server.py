@@ -8,14 +8,20 @@ brain-game score APIs so all apps use a single login.
 """
 
 import os
+import re
 import json
 import sqlite3
+import logging
+import time
+from collections import defaultdict
 from datetime import timedelta
 
 from flask import Flask, send_from_directory, jsonify, request, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from rummy5000.app import rummy_bp, init_db, DB_PATH
+
+logger = logging.getLogger(__name__)
 
 # static_folder=None because we serve DoddGames static files via explicit routes
 # and Rummy 5000 static files via its own Blueprint
@@ -25,6 +31,34 @@ app.secret_key = os.environ.get('SECRET_KEY', 'doddgames-dev-key-change-in-produ
 # Sessions persist for 365 days so users stay logged in across browser restarts
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=365)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('HTTPS'):
+    app.config['SESSION_COOKIE_SECURE'] = True
+
+# ── Valid game keys (allowlist) ──────────────────────────
+VALID_GAME_KEYS = frozenset([
+    'schulte', 'tetris', 'stroop', 'trails-a', 'trails-b',
+    'gonogo', 'card-sort', 'tower', 'symbol-digit', 'word-list',
+    'cpt', 'digit-span', 'reversi',
+])
+
+# ── Simple rate limiter for auth endpoints ───────────────
+_auth_attempts = defaultdict(list)  # ip -> [timestamps]
+AUTH_RATE_LIMIT = 10  # max attempts
+AUTH_RATE_WINDOW = 300  # per 5 minutes
+
+def _rate_limited(ip):
+    now = time.time()
+    attempts = _auth_attempts[ip]
+    _auth_attempts[ip] = [t for t in attempts if now - t < AUTH_RATE_WINDOW]
+    if len(_auth_attempts[ip]) >= AUTH_RATE_LIMIT:
+        return True
+    _auth_attempts[ip].append(now)
+    return False
+
+# ── Color validation ─────────────────────────────────────
+_HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 # Initialize database (creates tables if needed)
 init_db()
@@ -33,31 +67,36 @@ init_db()
 # Safe to run repeatedly — each ALTER is skipped if the column already exists.
 def _migrate_db():
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cols = {row[1] for row in cursor.execute("PRAGMA table_info(profiles)").fetchall()}
-    migrations = [
-        ('color', "ALTER TABLE profiles ADD COLUMN color TEXT DEFAULT '#7b2ff7'"),
-        ('age_bracket', "ALTER TABLE profiles ADD COLUMN age_bracket TEXT DEFAULT ''"),
-        ('colorblind', "ALTER TABLE profiles ADD COLUMN colorblind INTEGER DEFAULT 0"),
-        ('last_active_at', "ALTER TABLE profiles ADD COLUMN last_active_at TEXT"),
-        ('username', "ALTER TABLE profiles ADD COLUMN username TEXT UNIQUE"),
-        ('password_hash', "ALTER TABLE profiles ADD COLUMN password_hash TEXT"),
-    ]
-    for col, sql in migrations:
-        if col not in cols:
-            cursor.execute(sql)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS brain_scores (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            profile_id   INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
-            game_key     TEXT NOT NULL,
-            data         TEXT NOT NULL,
-            display_text TEXT,
-            played_at    TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cols = {row[1] for row in cursor.execute("PRAGMA table_info(profiles)").fetchall()}
+        migrations = [
+            ('color', "ALTER TABLE profiles ADD COLUMN color TEXT DEFAULT '#7b2ff7'"),
+            ('age_bracket', "ALTER TABLE profiles ADD COLUMN age_bracket TEXT DEFAULT ''"),
+            ('colorblind', "ALTER TABLE profiles ADD COLUMN colorblind INTEGER DEFAULT 0"),
+            ('last_active_at', "ALTER TABLE profiles ADD COLUMN last_active_at TEXT"),
+            ('username', "ALTER TABLE profiles ADD COLUMN username TEXT UNIQUE"),
+            ('password_hash', "ALTER TABLE profiles ADD COLUMN password_hash TEXT"),
+        ]
+        for col, sql in migrations:
+            if col not in cols:
+                cursor.execute(sql)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS brain_scores (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                profile_id   INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
+                game_key     TEXT NOT NULL,
+                data         TEXT NOT NULL,
+                display_text TEXT,
+                played_at    TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.commit()
+    except Exception:
+        logger.exception("Database migration failed")
+        raise
+    finally:
+        conn.close()
 
 _migrate_db()
 
@@ -132,11 +171,16 @@ _PROFILE_COLS = "id, username, name, color, age_bracket, colorblind, created_at,
 
 @app.route('/api/auth/register', methods=['POST'])
 def auth_register():
+    if _rate_limited(request.remote_addr):
+        return jsonify({'error': 'Too many attempts. Please wait a few minutes.'}), 429
+
     data = request.get_json() or {}
     username = (data.get('username') or '').strip().lower()
     password = data.get('password', '')
     name = (data.get('name') or '').strip()[:20]
     color = data.get('color', '#7b2ff7')
+    if not _HEX_COLOR_RE.match(color):
+        color = '#7b2ff7'
 
     if not username or len(username) < 3:
         return jsonify({'error': 'Username must be at least 3 characters'}), 400
@@ -144,8 +188,8 @@ def auth_register():
         return jsonify({'error': 'Username must be 20 characters or fewer'}), 400
     if not username.isalnum() and not all(c.isalnum() or c in '_-' for c in username):
         return jsonify({'error': 'Username can only contain letters, numbers, hyphens, and underscores'}), 400
-    if not password or len(password) < 4:
-        return jsonify({'error': 'Password must be at least 4 characters'}), 400
+    if not password or len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
     if not name:
         name = username
 
@@ -172,6 +216,9 @@ def auth_register():
 
 @app.route('/api/auth/login', methods=['POST'])
 def auth_login():
+    if _rate_limited(request.remote_addr):
+        return jsonify({'error': 'Too many attempts. Please wait a few minutes.'}), 429
+
     data = request.get_json() or {}
     username = (data.get('username') or '').strip().lower()
     password = data.get('password', '')
@@ -220,8 +267,8 @@ def auth_change_password():
 
     if not current_pw or not new_pw:
         return jsonify({'error': 'Current and new password are required'}), 400
-    if len(new_pw) < 4:
-        return jsonify({'error': 'New password must be at least 4 characters'}), 400
+    if len(new_pw) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters'}), 400
 
     with _db() as conn:
         row = conn.execute(
@@ -269,7 +316,7 @@ def update_user(uid):
             if name:
                 updates.append("name = ?")
                 params.append(name)
-        if 'color' in data:
+        if 'color' in data and _HEX_COLOR_RE.match(str(data['color'])):
             updates.append("color = ?")
             params.append(data['color'])
         if 'ageBracket' in data:
@@ -323,7 +370,10 @@ def get_scores():
         results = []
         for r in rows:
             entry = dict(r)
-            entry['data'] = json.loads(entry['data']) if entry['data'] else {}
+            try:
+                entry['data'] = json.loads(entry['data']) if entry['data'] else {}
+            except (json.JSONDecodeError, TypeError):
+                entry['data'] = {}
             results.append(entry)
         return jsonify(results)
 
@@ -339,6 +389,8 @@ def save_score():
 
     if not game_key:
         return jsonify({'error': 'game is required'}), 400
+    if game_key not in VALID_GAME_KEYS:
+        return jsonify({'error': 'Invalid game key'}), 400
 
     with _db() as conn:
         conn.execute(
@@ -365,6 +417,11 @@ def clear_scores():
             conn.execute("DELETE FROM brain_scores WHERE profile_id IS NULL")
         conn.commit()
         return jsonify({'cleared': True})
+
+
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'ok'})
 
 
 if __name__ == '__main__':

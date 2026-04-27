@@ -44,13 +44,19 @@ class App {
             opts.headers['Content-Type'] = 'application/json';
             opts.body = JSON.stringify(body);
         }
-        const res = await fetch('/rummy5000' + url, opts);
-        const data = await res.json();
-        if (!res.ok) {
-            this._showStatus(data.error || 'An error occurred', true);
+        try {
+            const res = await fetch('/rummy5000' + url, opts);
+            const data = await res.json();
+            if (!res.ok) {
+                this._showStatus(data.error || 'An error occurred', true);
+                return null;
+            }
+            return data;
+        } catch (err) {
+            console.warn('Network error on', method, url, err);
+            this._showStatus('Network error — please check your connection.', true);
             return null;
         }
-        return data;
     }
 
     // ── Screen management ─────────────────────────────
@@ -107,7 +113,7 @@ class App {
                 this._showScreen('menu');
                 return;
             }
-        } catch { /* fallback to legacy profile check */ }
+        } catch (err) { console.warn('Auth check failed, falling back to profiles:', err); }
 
         // Legacy fallback: check Rummy's own profile system
         const profile = await this._api('/api/profiles/active');
@@ -721,17 +727,31 @@ class App {
             const div = document.createElement('div');
             div.className = 'history-entry';
             const date = new Date(game.started_at).toLocaleDateString();
-            div.innerHTML = `
-                <div>
-                    <span class="result ${game.result}">${game.result === 'win' ? 'WIN' : 'LOSS'}</span>
-                    <span style="margin-left:8px;">${game.player_score.toLocaleString()} - ${game.ai_score.toLocaleString()}</span>
-                </div>
-                <div>
-                    <span style="text-transform:capitalize;">${game.difficulty}</span>
-                    <span class="history-meta" style="margin-left:8px;">${game.rounds_played} rounds</span>
-                    <span class="history-meta" style="margin-left:8px;">${date}</span>
-                </div>
-            `;
+
+            const row1 = document.createElement('div');
+            const resultSpan = document.createElement('span');
+            resultSpan.className = 'result ' + (game.result === 'win' ? 'win' : 'loss');
+            resultSpan.textContent = game.result === 'win' ? 'WIN' : 'LOSS';
+            const scoreSpan = document.createElement('span');
+            scoreSpan.style.marginLeft = '8px';
+            scoreSpan.textContent = `${(game.player_score ?? 0).toLocaleString()} - ${(game.ai_score ?? 0).toLocaleString()}`;
+            row1.append(resultSpan, scoreSpan);
+
+            const row2 = document.createElement('div');
+            const diffSpan = document.createElement('span');
+            diffSpan.style.textTransform = 'capitalize';
+            diffSpan.textContent = game.difficulty || '';
+            const roundsSpan = document.createElement('span');
+            roundsSpan.className = 'history-meta';
+            roundsSpan.style.marginLeft = '8px';
+            roundsSpan.textContent = `${game.rounds_played ?? 0} rounds`;
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'history-meta';
+            dateSpan.style.marginLeft = '8px';
+            dateSpan.textContent = date;
+            row2.append(diffSpan, roundsSpan, dateSpan);
+
+            div.append(row1, row2);
             list.appendChild(div);
         });
     }

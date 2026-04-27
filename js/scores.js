@@ -21,6 +21,7 @@ export class ScoreManager {
     async loadFromServer() {
         try {
             const res = await fetch('/api/scores');
+            if (!res.ok) throw new Error(`Server returned ${res.status}`);
             const data = await res.json();
             // Normalise server response to internal history format
             this._history = data.map(entry => ({
@@ -30,8 +31,10 @@ export class ScoreManager {
                 date: entry.played_at,
             }));
             this._loaded = true;
-        } catch {
-            this._history = [];
+        } catch (err) {
+            console.warn('Failed to load scores:', err);
+            // Keep existing cache on failure rather than wiping
+            if (!this._loaded) this._history = [];
             this._loaded = true;
         }
     }
@@ -41,19 +44,30 @@ export class ScoreManager {
     }
 
     async saveScore(game, data, displayText) {
-        // Save to server
-        await fetch('/api/scores', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ game, data, displayText }),
-        });
-        // Refresh local cache
+        try {
+            const res = await fetch('/api/scores', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game, data, displayText }),
+            });
+            if (!res.ok) console.warn('Score save returned', res.status);
+        } catch (err) {
+            console.warn('Failed to save score:', err);
+        }
+        // Refresh local cache regardless — shows latest server state
         await this.loadFromServer();
     }
 
     async clearHistory() {
-        await fetch('/api/scores/clear', { method: 'POST' });
-        this._history = [];
+        try {
+            const res = await fetch('/api/scores/clear', { method: 'POST' });
+            if (!res.ok) throw new Error(`Server returned ${res.status}`);
+            this._history = [];
+        } catch (err) {
+            console.warn('Failed to clear history:', err);
+            // Refresh from server to show actual state
+            await this.loadFromServer();
+        }
         this.renderAll();
     }
 
@@ -460,20 +474,24 @@ export class ScoreManager {
                     entry && entry.game && entry.date && typeof entry.game === 'string'
                 );
                 // Import each entry to the server
+                let imported = 0;
                 for (const entry of valid) {
-                    await fetch('/api/scores', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            game: entry.game,
-                            data: entry.data || {},
-                            displayText: entry.displayText || '',
-                        }),
-                    });
+                    try {
+                        const res = await fetch('/api/scores', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                game: entry.game,
+                                data: entry.data || {},
+                                displayText: entry.displayText || '',
+                            }),
+                        });
+                        if (res.ok) imported++;
+                    } catch { /* skip failed entry */ }
                 }
                 await this.loadFromServer();
                 this.renderAll();
-                alert(`Imported ${valid.length} entries.`);
+                alert(`Imported ${imported} of ${valid.length} entries.`);
             } catch (err) {
                 alert('Invalid file format. Please select a valid DoddGames export JSON.');
             }

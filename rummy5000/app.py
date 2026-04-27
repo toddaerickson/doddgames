@@ -8,8 +8,11 @@ import os
 import time
 import uuid
 import json
+import logging
 import sqlite3
 from flask import Blueprint, jsonify, request, session, render_template
+
+logger = logging.getLogger(__name__)
 
 from .game.engine import GameEngine, GameError, Phase
 from .game.ai import AIPlayer
@@ -192,8 +195,12 @@ def draw_card():
     engine, _ = _get_game()
     if not engine:
         return jsonify({'error': 'No active game'}), 404
+    sid = _session_id()
+    entry = active_games.get(sid)
     try:
         engine.player_draw_from_pile()
+        if entry:
+            _auto_save(engine, entry)
         return jsonify(_game_response(engine))
     except GameError as e:
         # If draw pile exhausted, return the round-end state
@@ -289,12 +296,19 @@ def discard_card():
             try:
                 ai_actions = ai.take_turn(engine)
             except Exception:
+                logger.exception("AI turn failed — falling back to emergency discard")
                 # Fallback: force AI to discard to avoid deadlock
                 if engine.phase == Phase.AI_TURN and engine.ai.hand:
                     engine.ai_discard(engine.ai.hand[0])
 
             if engine.phase in (Phase.ROUND_END, Phase.GAME_OVER):
                 _save_round_data()
+
+        # Auto-save after every discard+AI cycle
+        sid = _session_id()
+        entry = active_games.get(sid)
+        if entry:
+            _auto_save(engine, entry)
 
         return jsonify(_game_response(engine, ai_actions))
     except GameError as e:
@@ -423,6 +437,19 @@ def get_stats():
 
 
 # ── Helpers ────────────────────────────────────────────
+
+def _auto_save(engine, entry):
+    """Persist current game state to DB so it survives restarts."""
+    try:
+        ai = entry['ai']
+        state_json = _save_state_json(engine, ai)
+        history.update_game(
+            entry['db_id'], engine.player.total_score, engine.ai.total_score,
+            engine.round_number, 'in_progress', state_json
+        )
+    except Exception:
+        logger.exception("Auto-save failed")
+
 
 def _save_round_data():
     """Save the latest round to the database."""
