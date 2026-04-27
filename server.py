@@ -407,6 +407,38 @@ def save_score():
         return jsonify({'saved': True}), 201
 
 
+@app.route('/api/scores/import', methods=['POST'])
+def import_scores():
+    """Batch import multiple scores in a single request."""
+    pid = session.get('profile_id')
+    data = request.get_json() or {}
+    entries = data.get('entries', [])
+    if not isinstance(entries, list):
+        return jsonify({'error': 'entries must be an array'}), 400
+
+    imported = 0
+    with _db() as conn:
+        for entry in entries:
+            game_key = entry.get('game')
+            if not game_key or game_key not in VALID_GAME_KEYS:
+                continue
+            game_data = entry.get('data', {})
+            display_text = entry.get('displayText', '')
+            conn.execute(
+                "INSERT INTO brain_scores (profile_id, game_key, data, display_text) "
+                "VALUES (?, ?, ?, ?)",
+                (pid, game_key, json.dumps(game_data), display_text)
+            )
+            imported += 1
+        if pid and imported > 0:
+            conn.execute(
+                "UPDATE profiles SET last_active_at = datetime('now') WHERE id = ?",
+                (pid,)
+            )
+        conn.commit()
+    return jsonify({'imported': imported}), 201
+
+
 @app.route('/api/scores/clear', methods=['POST'])
 def clear_scores():
     pid = session.get('profile_id')

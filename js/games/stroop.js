@@ -196,7 +196,8 @@ export class StroopGame {
         if (activeUser) {
             this.app.users.updateUserSettings(activeUser.id, { colorblind: this.colorblindMode });
         } else {
-            localStorage.setItem('doddgames_colorblind', this.colorblindMode);
+            try { localStorage.setItem('doddgames_colorblind', this.colorblindMode); }
+            catch { /* storage unavailable (private browsing) */ }
         }
         document.getElementById('cb-toggle').classList.toggle('active', this.colorblindMode);
         this._buildButtons();
