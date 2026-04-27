@@ -78,7 +78,6 @@ export class CPTGame {
         document.getElementById('cpt-rt').textContent = '--';
         document.getElementById('cpt-letter').textContent = '';
         document.getElementById('cpt-letter').className = 'cpt-letter';
-        document.getElementById('cpt-instruction-context').textContent = '';
 
         this._generateTrialSequence();
         document.addEventListener('keydown', this._handleInput);
@@ -181,13 +180,6 @@ export class CPTGame {
         if (isProbe && letter === 'X') {
             // Visual highlight so the participant knows this is the target letter
             el.classList.add('cpt-target');
-        }
-
-        if (!isProbe) {
-            // Context letter — show amber warning when A appears to cue inhibition
-            const contextEl = document.getElementById('cpt-instruction-context');
-            contextEl.textContent = letter === 'A' ? 'Context: A (inhibit next X!)' : `Context: ${letter}`;
-            contextEl.style.color = letter === 'A' ? '#f39c12' : '#666'; // amber for A-context hint
         }
     }
 

@@ -600,9 +600,12 @@ class App {
         const labelEl = document.getElementById('countdown-label');
         overlay.classList.add('active');
 
+        const COUNTDOWN_INSTRUCTIONS = {
+            cpt: 'Remember: space bar for X, but not if A preceded it'
+        };
         let count = 3;
         numEl.textContent = count;
-        labelEl.textContent = 'Get ready...';
+        labelEl.textContent = COUNTDOWN_INSTRUCTIONS[this.currentGame] || 'Get ready...';
         this.audio.playBeep();
 
         const tick = () => {
