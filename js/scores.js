@@ -468,30 +468,26 @@ export class ScoreManager {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const imported = JSON.parse(e.target.result);
-                if (!Array.isArray(imported)) throw new Error('Invalid format');
-                const valid = imported.filter(entry =>
+                const parsed = JSON.parse(e.target.result);
+                if (!Array.isArray(parsed)) throw new Error('Invalid format');
+                const valid = parsed.filter(entry =>
                     entry && entry.game && entry.date && typeof entry.game === 'string'
                 );
-                // Import each entry to the server
-                let imported = 0;
-                for (const entry of valid) {
-                    try {
-                        const res = await fetch('/api/scores', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                game: entry.game,
-                                data: entry.data || {},
-                                displayText: entry.displayText || '',
-                            }),
-                        });
-                        if (res.ok) imported++;
-                    } catch { /* skip failed entry */ }
-                }
+                // Batch import in a single request
+                const entries = valid.map(entry => ({
+                    game: entry.game,
+                    data: entry.data || {},
+                    displayText: entry.displayText || '',
+                }));
+                const res = await fetch('/api/scores/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ entries }),
+                });
+                const result = res.ok ? await res.json() : { imported: 0 };
                 await this.loadFromServer();
                 this.renderAll();
-                alert(`Imported ${imported} of ${valid.length} entries.`);
+                alert(`Imported ${result.imported} of ${valid.length} entries.`);
             } catch (err) {
                 alert('Invalid file format. Please select a valid DoddGames export JSON.');
             }
