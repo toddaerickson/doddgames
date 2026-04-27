@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 # and Rummy 5000 static files via its own Blueprint
 app = Flask(__name__, static_folder=None)
 app.secret_key = os.environ.get('SECRET_KEY', 'doddgames-dev-key-change-in-production')
+if app.secret_key == 'doddgames-dev-key-change-in-production' and not app.debug:
+    logger.warning("SECRET_KEY is using the default value — set SECRET_KEY env var in production")
 
 # Sessions persist for 365 days so users stay logged in across browser restarts
 app.config['SESSION_PERMANENT'] = True
