@@ -49,12 +49,21 @@ def _session_id() -> str:
     return session['sid']
 
 
+_last_cleanup = 0.0
+
 def _get_game() -> tuple[GameEngine | None, AIPlayer | None]:
+    # Run cleanup periodically (every 5 minutes), not just on new_game
+    global _last_cleanup
+    now = time.time()
+    if now - _last_cleanup > 300:
+        _cleanup_sessions()
+        _last_cleanup = now
+
     sid = _session_id()
     entry = active_games.get(sid)
     if not entry:
         return None, None
-    entry['last_active'] = time.time()
+    entry['last_active'] = now
     return entry['engine'], entry['ai']
 
 
@@ -456,6 +465,7 @@ def _save_round_data():
     sid = _session_id()
     entry = active_games.get(sid)
     if not entry:
+        logger.warning("_save_round_data: session %s not found — round data lost", sid)
         return
 
     engine = entry['engine']

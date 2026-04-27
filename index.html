@@ -281,7 +281,7 @@
             <div class="history-actions">
                 <button class="action-btn" onclick="app.scores.exportData(app.users.getActiveUser()?.name || '')">Export</button>
                 <button class="action-btn" onclick="document.getElementById('import-file').click()">Import</button>
-                <button class="action-btn danger" onclick="app.scores.clearHistory()">Clear All</button>
+                <button class="action-btn danger" onclick="if(confirm('Clear all score history? This cannot be undone.')) app.scores.clearHistory()">Clear All</button>
             </div>
         </div>
         <div id="history-list" class="history-list"></div>
