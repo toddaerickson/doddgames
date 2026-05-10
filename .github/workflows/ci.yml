@@ -1,0 +1,22 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: rummy5000/requirements.txt
+      - name: Install dependencies
+        run: pip install -r rummy5000/requirements.txt pytest
+      - name: Run tests
+        run: python -m pytest rummy5000/tests/ -v
