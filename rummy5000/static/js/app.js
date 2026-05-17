@@ -168,7 +168,7 @@ class App {
     async _selectGuest() {
         await this._api('/api/profiles/guest', 'POST');
         document.getElementById('menu-player-name').textContent = 'Guest';
-        document.getElementById('btn-resume').style.display = 'none';
+        await this._checkResume();
         this._showScreen('menu');
     }
 
