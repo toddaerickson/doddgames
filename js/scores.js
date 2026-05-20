@@ -115,6 +115,9 @@ export class ScoreManager {
         } else if (game === 'digit-span') {
             const spans = entries.map(e => e.data && e.data.maxSpan).filter(s => s != null);
             return spans.length > 0 ? Math.max(...spans) : null;
+        } else if (game === 'nback') {
+            const levels = entries.map(e => e.data && e.data.maxLevel).filter(l => l != null);
+            return levels.length > 0 ? Math.max(...levels) : null;
         }
         return null;
     }
@@ -143,6 +146,8 @@ export class ScoreManager {
                 return entry.data.accuracy;
             case 'digit-span':
                 return entry.data.maxSpan;
+            case 'nback':
+                return entry.data.maxLevel;
             default:
                 return null;
         }
@@ -296,6 +301,7 @@ export class ScoreManager {
             { key: 'word-list', unit: '', label: 'Best Total', format: v => '' + v },
             { key: 'cpt', unit: '%', label: 'Best Accuracy', format: v => v + '%' },
             { key: 'digit-span', unit: '', label: 'Best Span', format: v => '' + v },
+            { key: 'nback', unit: '', label: 'Best Level', format: v => v + '-back' },
         ];
 
         ALL_GAMES.forEach(g => {
@@ -331,6 +337,7 @@ export class ScoreManager {
             { key: 'word-list', name: 'Word List', metric: 'Avg Total Recalled', unit: '', color: '#e91e63', format: v => Math.round(v) + '' },
             { key: 'cpt', name: 'CPT', metric: 'Avg Accuracy', unit: '%', color: '#ff9800', format: v => Math.round(v) + '%' },
             { key: 'digit-span', name: 'Digit Span', metric: 'Avg Max Span', unit: '', color: '#e040fb', format: v => v.toFixed(1) },
+            { key: 'nback', name: 'N-Back', metric: 'Avg Max Level', unit: '', color: '#00bcd4', format: v => v.toFixed(1) },
         ];
 
         games.forEach(g => {
@@ -408,7 +415,7 @@ export class ScoreManager {
             'trails-a': 'Trails A', gonogo: 'Go/No-Go',
             'trails-b': 'Trails B', 'card-sort': 'Card Sort', tower: 'Tower',
             'symbol-digit': 'Symbol Digit', 'word-list': 'Word List', cpt: 'CPT',
-            'digit-span': 'Digit Span'
+            'digit-span': 'Digit Span', nback: 'N-Back'
         };
 
         history.forEach(entry => {

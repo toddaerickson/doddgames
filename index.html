@@ -246,6 +246,17 @@
                     <canvas class="card-sparkline" width="80" height="24"></canvas>
                 </div>
             </div>
+            <div class="card" onclick="app.startGame('nback')">
+                <div class="icon">&#129504;</div>
+                <h2>N-Back</h2>
+                <p>Flag the square that matches the one N steps back. An adaptive test of working-memory updating.</p>
+                <div class="duration">5 minutes &middot; Working Memory</div>
+                <div class="card-best" id="card-best-nback">
+                    <span class="best-label">Best:</span>
+                    <span class="best-value">--</span>
+                    <canvas class="card-sparkline" width="80" height="24"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -639,6 +650,38 @@
             <button class="digit-btn" data-digit="0">0</button>
             <button class="digit-btn digit-span-submit" id="digit-span-submit" title="Submit" aria-label="Submit">&#10003;</button>
         </div>
+    </div>
+</div>
+
+<!-- ═══════════ N-BACK ═══════════ -->
+<!-- Memory — spatial working-memory updating; adaptive level with d′ and accuracy scoring. -->
+<div id="nback-screen" class="game-screen">
+    <div class="top-bar">
+        <button class="back-btn" onclick="app.goHome()">&#8592; Back</button>
+        <h2>N-Back</h2>
+        <div class="timer-display" id="nback-timer" role="timer" aria-live="off" aria-label="Time remaining">5:00</div>
+        <button class="fullscreen-btn" id="fs-btn-nback" title="Fullscreen" aria-label="Toggle fullscreen">&#x26F6;</button>
+    </div>
+    <div class="stats-row">
+        <div class="stat"><div class="label">Level</div><div class="value" id="nback-level" role="status" aria-live="polite">1</div></div>
+        <div class="stat"><div class="label">Hits</div><div class="value" id="nback-hits" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">False Alarms</div><div class="value" id="nback-false-alarms" role="status" aria-live="polite">0</div></div>
+        <div class="stat"><div class="label">Accuracy</div><div class="value" id="nback-accuracy" role="status" aria-live="polite">--</div></div>
+    </div>
+    <p class="schulte-instruction">Press <strong>SPACE</strong> or tap <strong>MATCH</strong> when the lit square matches the one <strong id="nback-level-inline">N</strong> steps back.</p>
+    <div class="nback-area" id="nback-area">
+        <div class="nback-grid" id="nback-grid">
+            <div class="nback-cell" id="nback-cell-0"></div>
+            <div class="nback-cell" id="nback-cell-1"></div>
+            <div class="nback-cell" id="nback-cell-2"></div>
+            <div class="nback-cell" id="nback-cell-3"></div>
+            <div class="nback-cell" id="nback-cell-4"></div>
+            <div class="nback-cell" id="nback-cell-5"></div>
+            <div class="nback-cell" id="nback-cell-6"></div>
+            <div class="nback-cell" id="nback-cell-7"></div>
+            <div class="nback-cell" id="nback-cell-8"></div>
+        </div>
+        <button class="gonogo-tap-btn" id="nback-match-btn">MATCH</button>
     </div>
 </div>
 

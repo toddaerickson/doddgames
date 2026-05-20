@@ -70,6 +70,7 @@ export class ProfileManager {
             'Memory': [
                 { key: 'word-list', extract: d => d.totalRecalled, higherIsBetter: true },
                 { key: 'digit-span', extract: d => d.maxSpan, higherIsBetter: true },
+                { key: 'nback', extract: d => d.maxLevel, higherIsBetter: true },
             ],
         };
 

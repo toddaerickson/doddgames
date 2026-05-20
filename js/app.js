@@ -27,6 +27,7 @@ import { SymbolDigitGame } from './games/symbol-digit.js';
 import { WordListGame } from './games/word-list.js';
 import { CPTGame } from './games/cpt.js';
 import { DigitSpanGame } from './games/digit-span.js';
+import { NBackGame } from './games/nback.js';
 import { ProfileManager } from './profile.js';
 
 class App {
@@ -52,6 +53,7 @@ class App {
         this.wordList = new WordListGame(this);
         this.cpt = new CPTGame(this);
         this.digitSpan = new DigitSpanGame(this);
+        this.nback = new NBackGame(this);
         this.profile = new ProfileManager(this.scores);
 
         this._wasRunningBeforeHide = false;
@@ -69,6 +71,7 @@ class App {
             'word-list': this.wordList,
             'cpt': this.cpt,
             'digit-span': this.digitSpan,
+            'nback': this.nback,
         };
 
         // Sound toggle
@@ -495,7 +498,7 @@ class App {
         });
     }
 
-    static SPACE_RESPONSE_GAMES = new Set(['gonogo', 'cpt']);
+    static SPACE_RESPONSE_GAMES = new Set(['gonogo', 'cpt', 'nback']);
 
     _handlePauseKey(e) {
         if (!this.currentGame) return;
@@ -601,7 +604,8 @@ class App {
         overlay.classList.add('active');
 
         const COUNTDOWN_INSTRUCTIONS = {
-            cpt: 'Remember: space bar for X, but not if A preceded it'
+            cpt: 'Remember: space bar for X, but not if A preceded it',
+            nback: 'Press SPACE when the square matches the one N steps back'
         };
         let count = 3;
         numEl.textContent = count;

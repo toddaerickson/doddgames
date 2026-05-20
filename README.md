@@ -4,7 +4,7 @@ A unified game platform combining cognitive assessment brain games with strategy
 
 ## What's Inside
 
-### Brain Games (12 neuropsychological assessments)
+### Brain Games (13 neuropsychological assessments)
 
 Organized into four cognitive domains, each game runs as a 5-minute timed session:
 
@@ -13,7 +13,7 @@ Organized into four cognitive domains, each game runs as a 5-minute timed sessio
 | **Processing Speed** | Schulte Table, Trail Making A, Symbol-Digit |
 | **Executive Function** | Tetris, Trail Making B, Card Sort, Tower of London |
 | **Inhibitory Control** | Stroop Test, Go/No-Go, CPT |
-| **Memory** | Word List Learning, Digit Span |
+| **Memory** | Word List Learning, Digit Span, N-Back |
 
 Includes a **Cognitive Profile** dashboard with radar charts, within-user z-scores, pattern matching against reference profiles, and retest tracking.
 
@@ -78,7 +78,7 @@ doddgames/
     scores.js             Score manager (talks to /api/scores)
     profile.js            Cognitive profile dashboard
     audio.js              Sound effects
-    games/                12 brain game modules
+    games/                13 brain game modules
   reversi/
     index.html              Reversi game page
     styles.css              Reversi styles
