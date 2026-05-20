@@ -5,14 +5,9 @@ Medium — uses discard pile strategically, holds partial melds, safe discards.
 Hard   — card counting, optimal meld timing, strategic go-out decisions.
 """
 
-import random
-from .deck import Card, RANK_ORDER
-from .melds import (
-    is_valid_meld, find_all_possible_melds, find_layoff_options,
-    can_lay_off
-)
-from .scoring import score_meld, card_points
-
+from .deck import RANK_ORDER, Card
+from .melds import can_lay_off, find_all_possible_melds, find_layoff_options
+from .scoring import card_points, score_meld
 
 # ── Standalone strategy functions (used by both AI and hint system) ──
 

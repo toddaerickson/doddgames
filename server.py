@@ -7,19 +7,19 @@ Provides shared authentication (username + password) and
 brain-game score APIs so all apps use a single login.
 """
 
+import json
+import logging
 import os
 import re
-import json
 import sqlite3
-import logging
 import time
 from collections import defaultdict
 from datetime import timedelta
 
-from flask import Flask, send_from_directory, jsonify, request, session
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, jsonify, request, send_from_directory, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from rummy5000.app import rummy_bp, init_db, DB_PATH
+from rummy5000.app import DB_PATH, init_db, rummy_bp
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ name: tests
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   pytest:
@@ -17,6 +17,8 @@ jobs:
           cache: pip
           cache-dependency-path: rummy5000/requirements.txt
       - name: Install dependencies
-        run: pip install -r rummy5000/requirements.txt pytest
+        run: pip install -r rummy5000/requirements.txt pytest ruff
+      - name: Lint (ruff)
+        run: ruff check .
       - name: Run tests
-        run: python -m pytest rummy5000/tests/ -v
+        run: python -m pytest -v

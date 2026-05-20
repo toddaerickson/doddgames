@@ -1,7 +1,6 @@
 """Game history and statistics model (SQLite)."""
 
 import sqlite3
-from typing import Optional
 
 
 class HistoryModel:
@@ -16,7 +15,7 @@ class HistoryModel:
 
     # ── Game CRUD ──────────────────────────────────────
 
-    def create_game(self, profile_id: Optional[int], difficulty: str,
+    def create_game(self, profile_id: int | None, difficulty: str,
                     target_score: int) -> int:
         with self._conn() as conn:
             cursor = conn.execute(
@@ -29,7 +28,7 @@ class HistoryModel:
 
     def update_game(self, game_id: int, player_score: int, ai_score: int,
                     rounds_played: int, result: str,
-                    saved_state: Optional[str] = None):
+                    saved_state: str | None = None):
         with self._conn() as conn:
             if result != 'in_progress':
                 conn.execute(
@@ -58,7 +57,7 @@ class HistoryModel:
             )
             conn.commit()
 
-    def get_saved_game(self, profile_id: Optional[int]) -> Optional[dict]:
+    def get_saved_game(self, profile_id: int | None) -> dict | None:
         with self._conn() as conn:
             if profile_id:
                 row = conn.execute(
@@ -185,7 +184,8 @@ class HistoryModel:
             by_difficulty = {}
             for diff in ('easy', 'medium', 'hard'):
                 d_total = conn.execute(
-                    "SELECT COUNT(*) as c FROM games WHERE profile_id = ? AND difficulty = ? AND result != 'in_progress'",
+                    "SELECT COUNT(*) as c FROM games "
+                    "WHERE profile_id = ? AND difficulty = ? AND result != 'in_progress'",
                     (profile_id, diff)
                 ).fetchone()['c']
                 d_wins = conn.execute(

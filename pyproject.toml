@@ -1,0 +1,14 @@
+[tool.ruff]
+# Existing real codebase: target the deployed Python version and keep churn low.
+target-version = "py312"
+line-length = 120
+extend-exclude = [".git", ".vscode"]
+
+[tool.ruff.lint]
+# Pragmatic default set: pyflakes (F), pycodestyle (E/W), isort (I),
+# pyupgrade (UP), and flake8-bugbear (B). No docstring/assert/style crusades
+# so the parallel worker's standard pytest files under tests/ stay clean.
+select = ["F", "E", "W", "I", "UP", "B"]
+# Phase(str, Enum) is an intentional, behavior-relevant pattern for JSON
+# serialization; migrating to StrEnum would change runtime str() semantics.
+ignore = ["UP042"]

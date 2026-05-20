@@ -5,7 +5,8 @@ joker substitution, and lay-offs onto existing melds.
 """
 
 from itertools import combinations
-from .deck import Card, RANK_ORDER, RANKS, SUITS
+
+from .deck import Card
 
 
 def is_valid_set(cards: list[Card]) -> bool:
@@ -130,7 +131,7 @@ def find_all_possible_melds(hand: list[Card]) -> list[list[Card]]:
     for c in naturals:
         by_rank.setdefault(c.rank, []).append(c)
 
-    for rank, cards in by_rank.items():
+    for cards in by_rank.values():
         # Sets of 3 or 4 naturals
         if len(cards) >= 3:
             for combo in combinations(cards, 3):
@@ -151,7 +152,7 @@ def find_all_possible_melds(hand: list[Card]) -> list[list[Card]]:
     for c in naturals:
         by_suit.setdefault(c.suit, []).append(c)
 
-    for suit, cards in by_suit.items():
+    for cards in by_suit.values():
         sorted_cards = sorted(cards, key=lambda c: c.rank_index)
         n = len(sorted_cards)
 
