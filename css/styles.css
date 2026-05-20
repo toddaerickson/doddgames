@@ -672,6 +672,53 @@ a.card-link { text-decoration: none; color: inherit; }
     .gonogo-tap-btn { display: block; }
 }
 
+/* ═══════════════════════════════════════════
+   N-BACK
+   Working-memory updating: a cell lights in a 3×3 grid each trial; respond
+   when it matches the position N steps back. .lit highlights the active cell;
+   .feedback-hit / .feedback-fa flash the grid border on response.
+   ═══════════════════════════════════════════ */
+.nback-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 280px;
+    width: 100%;
+    max-width: 700px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.nback-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: min(80vw, 340px);
+    aspect-ratio: 1 / 1;
+    padding: 10px;
+    border: 3px solid #2a2a4a;
+    border-radius: 16px;
+    transition: border-color 0.1s, box-shadow 0.1s;
+}
+
+.nback-cell {
+    background: #1a1a35;
+    border-radius: 10px;
+    transition: background 0.08s, box-shadow 0.08s, transform 0.08s;
+}
+
+.nback-cell.lit {
+    background: #00bcd4;
+    box-shadow: 0 0 30px rgba(0, 188, 212, 0.55);
+    transform: scale(1.04);
+}
+
+.nback-grid.feedback-hit { border-color: #2ecc71; box-shadow: 0 0 30px rgba(46, 204, 113, 0.4); }
+.nback-grid.feedback-fa { border-color: #e74c3c; animation: shake 0.3s; }
+
 /* ── Trail Making B ─────────────────────────── */
 /* Reuses .trails-canvas-wrap from Trail Making A — no additional styles needed */
 

@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-DoddGames is a unified Flask game platform combining 12 neuropsychological brain games (cognitive assessments), Reversi (AI-powered with 10 difficulty levels), and Rummy 5000 (card game with server-side AI). Single username+password authentication persists across all games. SQLite backend for profiles and game history.
+DoddGames is a unified Flask game platform combining 13 neuropsychological brain games (cognitive assessments), Reversi (AI-powered with 10 difficulty levels), and Rummy 5000 (card game with server-side AI). Single username+password authentication persists across all games. SQLite backend for profiles and game history.
 
 ## Development Commands
 ```bash

@@ -42,7 +42,7 @@ if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('HTTPS'):
 VALID_GAME_KEYS = frozenset([
     'schulte', 'tetris', 'stroop', 'trails-a', 'trails-b',
     'gonogo', 'card-sort', 'tower', 'symbol-digit', 'word-list',
-    'cpt', 'digit-span', 'reversi',
+    'cpt', 'digit-span', 'nback', 'reversi',
 ])
 
 # ── Simple rate limiter for auth endpoints ───────────────
