@@ -1,8 +1,7 @@
 """Card and Deck models for Rummy 5000."""
 
 import random
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 SUITS = ('hearts', 'diamonds', 'clubs', 'spades')
 RANKS = ('A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K')
@@ -81,7 +80,7 @@ class Deck:
     def shuffle(self):
         random.shuffle(self.cards)
 
-    def draw(self) -> Optional[Card]:
+    def draw(self) -> Card | None:
         if not self.cards:
             return None
         return self.cards.pop()

@@ -10,15 +10,13 @@ through the same interface as the player.
 """
 
 import json
-import random
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
+from .ai import discard_danger_from_table, evaluate_discard_pickup, partial_meld_value
 from .deck import Card, Deck
-from .melds import is_valid_meld, can_lay_off, find_all_possible_melds, find_layoff_options, can_meld_card
-from .scoring import calculate_round_score, score_meld, card_points
-from .ai import evaluate_discard_pickup, partial_meld_value, discard_danger_from_table
+from .melds import can_lay_off, can_meld_card, find_all_possible_melds, find_layoff_options, is_valid_meld
+from .scoring import calculate_round_score, card_points, score_meld
 
 
 class Phase(str, Enum):
@@ -68,9 +66,9 @@ class GameEngine:
         self.round_number = 0
         self.round_history: list[dict] = []
         # Track what was drawn from discard this turn (can't discard it back)
-        self._drawn_from_discard: Optional[Card] = None
+        self._drawn_from_discard: Card | None = None
         # Track if player has melded the required card after picking up from discard
-        self._must_meld_card: Optional[Card] = None
+        self._must_meld_card: Card | None = None
         self._game_over = False
 
     def new_round(self):
@@ -275,7 +273,7 @@ class GameEngine:
 
     # ── AI actions (called by ai module) ───────────────
 
-    def ai_draw_from_pile(self) -> Optional[Card]:
+    def ai_draw_from_pile(self) -> Card | None:
         if self.phase not in (Phase.AI_TURN, Phase.PLAYER_DRAW):
             return None
         card = self.deck.draw()
@@ -367,7 +365,7 @@ class GameEngine:
             self.phase = Phase.GAME_OVER
             self._game_over = True
 
-    def get_winner(self) -> Optional[str]:
+    def get_winner(self) -> str | None:
         if not self._game_over:
             return None
         if self.player.total_score >= self.target_score and self.ai.total_score >= self.target_score:
@@ -571,7 +569,6 @@ class GameEngine:
 
     def to_dict(self) -> dict:
         """Full game state for the frontend. AI hand is hidden."""
-        all_melds = self.player.melds + self.ai.melds
         return {
             'phase': self.phase.value,
             'round_number': self.round_number,

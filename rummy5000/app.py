@@ -4,21 +4,22 @@ Provides REST API endpoints for game actions, profiles, and history.
 Designed to be mounted at /rummy5000 by the unified server.
 """
 
-import os
-import time
-import uuid
 import json
 import logging
+import os
 import sqlite3
-from flask import Blueprint, jsonify, request, session, render_template
+import time
+import uuid
 
-logger = logging.getLogger(__name__)
+from flask import Blueprint, jsonify, render_template, request, session
 
-from .game.engine import GameEngine, GameError, Phase
 from .game.ai import AIPlayer
 from .game.deck import Card
-from .models.profile import ProfileModel
+from .game.engine import GameEngine, GameError, Phase
 from .models.history import HistoryModel
+from .models.profile import ProfileModel
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = os.environ.get('DATABASE_PATH',
     os.path.join(os.path.dirname(__file__), 'db', 'rummy5000.db'))

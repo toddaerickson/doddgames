@@ -1,9 +1,9 @@
 """Tests for rummy5000.game.engine module."""
 
 import pytest
+
 from rummy5000.game.deck import Card, Deck
 from rummy5000.game.engine import GameEngine, GameError, Phase
-
 
 # ── Helpers ────────────────────────────────────────────────
 

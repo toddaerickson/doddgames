@@ -1,7 +1,6 @@
 """Profile model — CRUD for local player profiles (SQLite)."""
 
 import sqlite3
-from typing import Optional
 
 
 class ProfileModel:
@@ -21,7 +20,7 @@ class ProfileModel:
             ).fetchall()
             return [dict(r) for r in rows]
 
-    def get(self, profile_id: int) -> Optional[dict]:
+    def get(self, profile_id: int) -> dict | None:
         with self._conn() as conn:
             row = conn.execute(
                 "SELECT id, name, created_at FROM profiles WHERE id = ?",
@@ -40,8 +39,8 @@ class ProfileModel:
                 )
                 conn.commit()
                 return self.get(cursor.lastrowid)
-            except sqlite3.IntegrityError:
-                raise ValueError(f"Profile '{name}' already exists")
+            except sqlite3.IntegrityError as err:
+                raise ValueError(f"Profile '{name}' already exists") from err
 
     def delete(self, profile_id: int) -> bool:
         with self._conn() as conn:
