@@ -107,7 +107,7 @@ export class UserManager {
     // ── Preset colors for the avatar picker ──────────────────────────
 
     static AVATAR_COLORS = [
-        '#7b2ff7', '#e74c3c', '#3498db', '#2ecc71',
+        '#4f8cff', '#e74c3c', '#3498db', '#2ecc71',
         '#f39c12', '#e91e63', '#00bcd4', '#ff5722',
         '#9c27b0', '#4caf50',
     ];

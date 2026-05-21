@@ -265,7 +265,7 @@ export class TrailsBGame {
 
         if (foundInOrder.length > 1) {
             ctx.beginPath();
-            ctx.strokeStyle = '#7b2ff744'; // semi-transparent purple trail
+            ctx.strokeStyle = '#4f8cff44'; // semi-transparent accent trail
             ctx.lineWidth = 3;
             ctx.moveTo(foundInOrder[0].x, foundInOrder[0].y);
             for (let i = 1; i < foundInOrder.length; i++) {
@@ -286,7 +286,7 @@ export class TrailsBGame {
                 ctx.strokeStyle = '#2ecc71';  // green = completed
             } else if (c.label === currentTarget) {
                 ctx.fillStyle = '#2a1a4a';
-                ctx.strokeStyle = '#7b2ff7';  // purple = active target
+                ctx.strokeStyle = '#4f8cff';  // purple = active target
             } else {
                 // Letter circles get a blue tint for category identity,
                 // helping distinguish the two sets at a glance
@@ -302,7 +302,7 @@ export class TrailsBGame {
             if (c.found) {
                 ctx.fillStyle = '#2ecc71';
             } else if (c.label === currentTarget) {
-                ctx.fillStyle = '#00d4ff';
+                ctx.fillStyle = '#4f8cff';
             } else {
                 ctx.fillStyle = c.isLetter ? '#6ab0c9' : '#999';
             }

@@ -273,7 +273,7 @@ export class WordListGame {
         const curveText = this.trialRecalls.join(' → ');
         document.getElementById('wordlist-learning-curve').textContent = curveText;
         document.getElementById('wordlist-recall-timer').style.display = 'none';
-        document.getElementById('wordlist-recall-timer').style.color = '#00d4ff';
+        document.getElementById('wordlist-recall-timer').style.color = '#4f8cff';
         document.getElementById('wordlist-input-area').style.display = 'none';
 
         if (this.trial < this.NUM_TRIALS) {

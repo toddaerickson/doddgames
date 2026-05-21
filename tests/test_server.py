@@ -16,7 +16,7 @@ def test_register_success(client):
     assert body["id"] is not None
     assert body["username"] == "alice"  # lowercased
     assert body["name"] == "alice"      # defaults to username
-    assert body["color"] == "#7b2ff7"
+    assert body["color"] == "#4f8cff"
 
 
 def test_register_with_name_and_color(client):
@@ -35,7 +35,7 @@ def test_register_invalid_color_falls_back(client):
         "username": "carol", "password": "password123", "color": "notacolor",
     })
     assert resp.status_code == 201
-    assert resp.get_json()["color"] == "#7b2ff7"
+    assert resp.get_json()["color"] == "#4f8cff"
 
 
 def test_register_duplicate_username(client):
