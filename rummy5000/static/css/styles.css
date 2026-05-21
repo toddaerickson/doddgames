@@ -30,7 +30,7 @@
     --bad: #f04747;
     --warn: #d6932b;
     --radius: 4px;
-    --font: 'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    --font: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 
     /* Rummy-specific aliases mapped to the design tokens */
     --table-green: var(--surface);

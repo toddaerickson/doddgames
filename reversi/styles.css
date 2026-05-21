@@ -20,7 +20,7 @@
     --bad: #f04747;
     --warn: #d6932b;
     --radius: 4px;
-    --font: 'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    --font: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 
     /* Reversi-specific */
     --bg-surface: var(--surface);

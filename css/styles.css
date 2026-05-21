@@ -19,7 +19,8 @@
     --bad: #f04747;
     --warn: #d6932b;
     --radius: 4px;
-    --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -269,7 +270,7 @@ a.card-link { text-decoration: none; color: inherit; }
 }
 
 .timer-display {
-    font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 1.4rem;
     font-variant-numeric: tabular-nums;
     color: var(--text);
