@@ -441,7 +441,7 @@ export class ProfileManager {
         ctx.closePath();
         ctx.fillStyle = 'rgba(123, 47, 247, 0.2)';
         ctx.fill();
-        ctx.strokeStyle = '#7b2ff7';
+        ctx.strokeStyle = '#4f8cff';
         ctx.lineWidth = 2;
         ctx.stroke();
 
@@ -456,7 +456,7 @@ export class ProfileManager {
 
             ctx.beginPath();
             ctx.arc(x, y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#00d4ff';
+            ctx.fillStyle = '#4f8cff';
             ctx.fill();
             ctx.strokeStyle = '#0d0d20';
             ctx.lineWidth = 2;

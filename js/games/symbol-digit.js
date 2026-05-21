@@ -288,7 +288,7 @@ export class SymbolDigitGame {
 
         document.getElementById('sdmt-best').textContent = this.bestRoundScore;
         document.getElementById('sdmt-round').textContent = this.roundsCompleted + 1;
-        document.getElementById('sdmt-round-timer').style.color = '#00d4ff';
+        document.getElementById('sdmt-round-timer').style.color = '#4f8cff';
 
         // Display round score in the stimulus area, then start the next round
         this.locked = true;

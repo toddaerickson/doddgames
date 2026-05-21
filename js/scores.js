@@ -215,7 +215,7 @@ export class ScoreManager {
         const range = max - min || 1;
 
         ctx.beginPath();
-        ctx.strokeStyle = '#7b2ff7';
+        ctx.strokeStyle = '#4f8cff';
         ctx.lineWidth = 1.5;
         data.forEach((v, i) => {
             const x = (i / (data.length - 1)) * (w - 4) + 2;
@@ -230,12 +230,12 @@ export class ScoreManager {
             const y = h - 2 - ((last - min) / range) * (h - 4);
             ctx.beginPath();
             ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = '#00d4ff';
+            ctx.fillStyle = '#4f8cff';
             ctx.fill();
         }
     }
 
-    drawAnalyticsSparkline(canvas, data, color = '#7b2ff7') {
+    drawAnalyticsSparkline(canvas, data, color = '#4f8cff') {
         if (!canvas || data.length < 2) {
             if (canvas) {
                 const ctx = canvas.getContext('2d');
@@ -325,8 +325,8 @@ export class ScoreManager {
         container.innerHTML = '';
 
         const games = [
-            { key: 'schulte', name: 'Schulte Table', metric: 'Avg Time', unit: 's', color: '#00d4ff', format: v => v.toFixed(1) + 's' },
-            { key: 'tetris', name: 'Tetris', metric: 'Avg Score', unit: '', color: '#7b2ff7', format: v => Math.round(v) + '' },
+            { key: 'schulte', name: 'Schulte Table', metric: 'Avg Time', unit: 's', color: '#4f8cff', format: v => v.toFixed(1) + 's' },
+            { key: 'tetris', name: 'Tetris', metric: 'Avg Score', unit: '', color: '#4f8cff', format: v => Math.round(v) + '' },
             { key: 'stroop', name: 'Stroop', metric: 'Avg Accuracy', unit: '%', color: '#2ecc71', format: v => Math.round(v) + '%' },
             { key: 'trails-a', name: 'Trail Making A', metric: 'Avg Time', unit: 's', color: '#f39c12', format: v => v.toFixed(1) + 's' },
             { key: 'gonogo', name: 'Go/No-Go', metric: 'Avg Accuracy', unit: '%', color: '#e74c3c', format: v => Math.round(v) + '%' },

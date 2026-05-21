@@ -73,7 +73,7 @@ def _migrate_db():
         cursor = conn.cursor()
         cols = {row[1] for row in cursor.execute("PRAGMA table_info(profiles)").fetchall()}
         migrations = [
-            ('color', "ALTER TABLE profiles ADD COLUMN color TEXT DEFAULT '#7b2ff7'"),
+            ('color', "ALTER TABLE profiles ADD COLUMN color TEXT DEFAULT '#4f8cff'"),
             ('age_bracket', "ALTER TABLE profiles ADD COLUMN age_bracket TEXT DEFAULT ''"),
             ('colorblind', "ALTER TABLE profiles ADD COLUMN colorblind INTEGER DEFAULT 0"),
             ('last_active_at', "ALTER TABLE profiles ADD COLUMN last_active_at TEXT"),
@@ -180,9 +180,9 @@ def auth_register():
     username = (data.get('username') or '').strip().lower()
     password = data.get('password', '')
     name = (data.get('name') or '').strip()[:20]
-    color = data.get('color', '#7b2ff7')
+    color = data.get('color', '#4f8cff')
     if not _HEX_COLOR_RE.match(color):
-        color = '#7b2ff7'
+        color = '#4f8cff'
 
     if not username or len(username) < 3:
         return jsonify({'error': 'Username must be at least 3 characters'}), 400

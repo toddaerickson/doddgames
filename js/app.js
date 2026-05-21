@@ -252,7 +252,7 @@ class App {
         const name = document.getElementById('register-name').value.trim();
         const errorEl = document.getElementById('register-error');
         const selectedColorEl = document.querySelector('.user-color-option.selected');
-        const color = selectedColorEl ? selectedColorEl.dataset.color : '#7b2ff7';
+        const color = selectedColorEl ? selectedColorEl.dataset.color : '#4f8cff';
 
         if (!username || !password) {
             errorEl.textContent = 'Username and password are required.';
@@ -697,7 +697,7 @@ class App {
         const el = document.getElementById(`${game}-timer`);
         if (el) {
             el.textContent = display;
-            el.style.color = this.timeLeft <= 30 ? '#e74c3c' : '#00d4ff';
+            el.style.color = this.timeLeft <= 30 ? '#e74c3c' : '#4f8cff';
         }
     }
 

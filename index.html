@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0a0a1a">
+    <meta name="theme-color" content="#111316">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>DoddGames — Cognitive Assessment Platform</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -452,7 +455,7 @@
         <div class="stat"><div class="label">Misses</div><div class="value" id="gonogo-misses" role="status" aria-live="polite">0</div></div>
         <div class="stat"><div class="label">Avg RT</div><div class="value" id="gonogo-rt" role="status" aria-live="polite">--</div></div>
     </div>
-    <p class="schulte-instruction">Press <strong>SPACE</strong> or tap for <span style="color:#2ecc71">GREEN</span> circles. Do NOT respond to <span style="color:#e74c3c">RED</span> circles.</p>
+    <p class="schulte-instruction">Press <strong>SPACE</strong> or tap for <span style="color:var(--good)">GREEN</span> circles. Do NOT respond to <span style="color:var(--bad)">RED</span> circles.</p>
     <div class="gonogo-area" id="gonogo-area">
         <div class="gonogo-circle" id="gonogo-circle"></div>
         <button class="gonogo-tap-btn" id="gonogo-tap-btn">TAP</button>
@@ -700,7 +703,7 @@
         <div class="stat"><div class="label">AX Inhibits</div><div class="value" id="cpt-ax-inhibit" role="status" aria-live="polite">0</div></div>
         <div class="stat"><div class="label">Avg RT</div><div class="value" id="cpt-rt" role="status" aria-live="polite">--</div></div>
     </div>
-    <p class="schulte-instruction">Press <strong>SPACE</strong> when you see <strong style="color:#00d4ff">X</strong>, but <strong style="color:#e74c3c">NOT</strong> if <strong style="color:#f39c12">A</strong> came before it.</p>
+    <p class="schulte-instruction">Press <strong>SPACE</strong> when you see <strong style="color:var(--accent)">X</strong>, but <strong style="color:var(--bad)">NOT</strong> if <strong style="color:var(--warn)">A</strong> came before it.</p>
     <div class="cpt-area" id="cpt-area">
         <div class="cpt-letter" id="cpt-letter"></div>
         <button class="gonogo-tap-btn" id="cpt-tap-btn">TAP</button>
@@ -775,7 +778,7 @@
             <input type="password" id="register-password" class="auth-input" placeholder="Password (4+ chars)" autocomplete="new-password">
             <input type="text" id="register-name" class="auth-input" placeholder="Display name (optional)" maxlength="20" autocomplete="off">
             <div class="user-color-picker">
-                <span class="user-color-option selected" data-color="#7b2ff7" style="background:#7b2ff7"></span>
+                <span class="user-color-option selected" data-color="#4f8cff" style="background:#4f8cff"></span>
                 <span class="user-color-option" data-color="#e74c3c" style="background:#e74c3c"></span>
                 <span class="user-color-option" data-color="#3498db" style="background:#3498db"></span>
                 <span class="user-color-option" data-color="#2ecc71" style="background:#2ecc71"></span>

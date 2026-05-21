@@ -328,7 +328,7 @@ export class TrailsAGame {
         const found = this.circles.filter(c => c.found).sort((a, b) => a.num - b.num);
         if (found.length > 1) {
             ctx.beginPath();
-            ctx.strokeStyle = '#7b2ff744';
+            ctx.strokeStyle = '#4f8cff44';
             ctx.lineWidth = 3;
             ctx.moveTo(found[0].x, found[0].y);
             for (let i = 1; i < found.length; i++) {
@@ -349,7 +349,7 @@ export class TrailsAGame {
             } else if (c.num === this.nextTarget) {
                 // Highlight the next target so the participant knows what to tap
                 ctx.fillStyle = '#2a1a4a';
-                ctx.strokeStyle = '#7b2ff7';
+                ctx.strokeStyle = '#4f8cff';
             } else {
                 ctx.fillStyle = '#1a1a35';
                 ctx.strokeStyle = '#2a2a4a';
@@ -360,7 +360,7 @@ export class TrailsAGame {
             ctx.stroke();
 
             // Number label
-            ctx.fillStyle = c.found ? '#2ecc71' : (c.num === this.nextTarget ? '#00d4ff' : '#999');
+            ctx.fillStyle = c.found ? '#2ecc71' : (c.num === this.nextTarget ? '#4f8cff' : '#999');
             ctx.font = 'bold 16px Segoe UI, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
